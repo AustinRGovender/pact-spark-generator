@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodeViewer } from '../components/CodeViewer';
@@ -105,7 +106,6 @@ const Index = () => {
             />
             
             <div className="grid lg:grid-cols-4 gap-6">
-              {/* Test List */}
               <div className="lg:col-span-1">
                 <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-xl p-6">
                   <h3 className="text-lg font-semibold text-slate-800 mb-4">
@@ -136,7 +136,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Code Viewer */}
               <div className="lg:col-span-3">
                 {selectedTest && <CodeViewer test={selectedTest} />}
               </div>
