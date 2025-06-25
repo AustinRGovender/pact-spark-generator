@@ -1,7 +1,7 @@
 
 import { ParsedSpec, ParsedOperation } from './swaggerParser';
 
-interface GeneratedTest {
+export interface GeneratedTest {
   filename: string;
   content: string;
   tag: string;
@@ -9,139 +9,113 @@ interface GeneratedTest {
   method: string;
 }
 
-const generateTestContent = (operation: ParsedOperation, specInfo: any): string => {
-  const operationName = operation.operationId || `${operation.method.toLowerCase()}${operation.path.replace(/[^a-zA-Z0-9]/g, '')}`;
-  const description = operation.summary || `${operation.method} ${operation.path}`;
-  
-  // Generate example request based on parameters and request body
-  let requestExample = '{}';
-  if (operation.requestBody?.content?.['application/json']?.schema) {
-    requestExample = generateExampleFromSchema(operation.requestBody.content['application/json'].schema);
-  }
-  
-  // Generate example response based on successful response schema
-  let responseExample = '{}';
-  const successResponse = operation.responses?.['200'] || operation.responses?.['201'] || operation.responses?.['204'];
-  if (successResponse?.content?.['application/json']?.schema) {
-    responseExample = generateExampleFromSchema(successResponse.content['application/json'].schema);
-  }
-  
-  const statusCode = Object.keys(operation.responses || {}).find(code => code.startsWith('2')) || '200';
+export const generatePactTests = (spec: ParsedSpec): GeneratedTest[] => {
+  const tests: GeneratedTest[] = [];
+
+  spec.operations.forEach((operation) => {
+    const tag = operation.tags?.[0] || 'default';
+    const sanitizedEndpoint = operation.path.replace(/[{}]/g, '').replace(/\//g, '_');
+    const filename = `${tag}_${operation.method.toLowerCase()}_${sanitizedEndpoint}.test.js`;
+    
+    const testContent = generatePactTestContent(operation, spec);
+    
+    tests.push({
+      filename,
+      content: testContent,
+      tag,
+      endpoint: operation.path,
+      method: operation.method,
+    });
+  });
+
+  return tests;
+};
+
+const generatePactTestContent = (operation: ParsedOperation, spec: ParsedSpec): string => {
+  const providerName = spec.info.title.replace(/\s+/g, '');
+  const consumerName = `${providerName}Consumer`;
   
   return `const { Pact } = require('@pact-foundation/pact');
-const { like, eachLike } = require('@pact-foundation/pact').Matchers;
+const path = require('path');
 
-describe('${specInfo.title} - ${description}', () => {
+describe('${operation.summary || operation.path}', () => {
   const provider = new Pact({
-    consumer: '${specInfo.title.replace(/[^a-zA-Z0-9]/g, '')}-consumer',
-    provider: '${specInfo.title.replace(/[^a-zA-Z0-9]/g, '')}-provider',
-    port: 1234,
-    log: './logs/pact.log',
-    dir: './pacts',
-    logLevel: 'INFO',
+    consumer: '${consumerName}',
+    provider: '${providerName}',
+    dir: path.resolve(process.cwd(), 'pacts'),
+    logLevel: 'info'
   });
 
   beforeAll(() => provider.setup());
   afterEach(() => provider.verify());
   afterAll(() => provider.finalize());
 
-  describe('${operationName}', () => {
-    it('should ${description.toLowerCase()}', async () => {
+  describe('${operation.method} ${operation.path}', () => {
+    it('should return a successful response', async () => {
       // Arrange
-      await provider.addInteraction({
-        state: 'provider has data',
-        uponReceiving: '${description}',
-        withRequest: {
+      const expectedResponse = ${generateExpectedResponse(operation)};
+      
+      await provider
+        .given('${operation.summary || 'default state'}')
+        .uponReceiving('a request for ${operation.path}')
+        .withRequest({
           method: '${operation.method}',
-          path: '${operation.path}',
-          ${operation.method !== 'GET' && operation.method !== 'DELETE' ? `body: ${requestExample},` : ''}
+          path: '${operation.path}'${generateRequestBody(operation)}
+        })
+        .willRespondWith({
+          status: 200,
           headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            'Content-Type': 'application/json'
           },
-        },
-        willRespondWith: {
-          status: ${statusCode},
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: ${responseExample},
-        },
-      });
+          body: expectedResponse
+        });
 
       // Act & Assert
-      // Add your actual HTTP client call here
-      // Example:
-      // const response = await yourApiClient.${operationName}();
-      // expect(response.status).toBe(${statusCode});
+      // Add your consumer code here to make the actual request
+      // const response = await yourApiClient.${operation.method.toLowerCase()}('${operation.path}');
+      // expect(response.data).toEqual(expectedResponse);
     });
   });
-});
-`;
+});`;
 };
 
-const generateExampleFromSchema = (schema: any): string => {
-  if (!schema) return '{}';
-  
-  try {
-    const example = generateMockData(schema);
-    return JSON.stringify(example, null, 2);
-  } catch {
-    return '{}';
+const generateExpectedResponse = (operation: ParsedOperation): string => {
+  if (operation.responses?.['200']?.content?.['application/json']?.schema) {
+    return JSON.stringify(generateMockData(operation.responses['200'].content['application/json'].schema), null, 2);
   }
+  return '{ "success": true }';
+};
+
+const generateRequestBody = (operation: ParsedOperation): string => {
+  if (operation.requestBody?.content?.['application/json']?.schema) {
+    const mockBody = generateMockData(operation.requestBody.content['application/json'].schema);
+    return `,\n          body: ${JSON.stringify(mockBody, null, 10)}`;
+  }
+  return '';
 };
 
 const generateMockData = (schema: any): any => {
-  if (schema.example) return schema.example;
+  if (!schema) return {};
   
   switch (schema.type) {
     case 'object':
       const obj: any = {};
       if (schema.properties) {
-        Object.entries(schema.properties).forEach(([key, propSchema]: [string, any]) => {
-          obj[key] = generateMockData(propSchema);
+        Object.keys(schema.properties).forEach(key => {
+          obj[key] = generateMockData(schema.properties[key]);
         });
       }
       return obj;
-    
     case 'array':
-      return schema.items ? [generateMockData(schema.items)] : [];
-    
+      return [generateMockData(schema.items)];
     case 'string':
-      if (schema.format === 'date-time') return '2023-01-01T00:00:00Z';
-      if (schema.format === 'date') return '2023-01-01';
-      if (schema.format === 'email') return 'user@example.com';
-      if (schema.format === 'uri') return 'https://example.com';
-      return schema.enum ? schema.enum[0] : 'string';
-    
+      return schema.example || 'string';
     case 'number':
     case 'integer':
-      return schema.enum ? schema.enum[0] : 42;
-    
+      return schema.example || 123;
     case 'boolean':
-      return true;
-    
+      return schema.example || true;
     default:
       return null;
   }
-};
-
-export const generatePactTests = (spec: ParsedSpec): GeneratedTest[] => {
-  const tests: GeneratedTest[] = [];
-  
-  spec.operations.forEach(operation => {
-    const tag = operation.tags?.[0] || 'default';
-    const filename = `${operation.method.toLowerCase()}-${operation.path.replace(/[^a-zA-Z0-9]/g, '-')}.spec.js`;
-    const content = generateTestContent(operation, spec.info);
-    
-    tests.push({
-      filename,
-      content,
-      tag,
-      endpoint: operation.path,
-      method: operation.method,
-    });
-  });
-  
-  return tests;
 };

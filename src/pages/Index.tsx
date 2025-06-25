@@ -1,13 +1,12 @@
-
 import React, { useState, useCallback } from 'react';
-import { FileUploader } from '@/components/FileUploader';
-import { CodeViewer } from '@/components/CodeViewer';
-import { PrivacyBanner } from '@/components/PrivacyBanner';
-import { ActionBar } from '@/components/ActionBar';
-import { parseSwaggerFile } from '@/utils/swaggerParser';
-import { generatePactTests } from '@/utils/pactGenerator';
-import { downloadZip } from '@/utils/downloadUtils';
-import { useToast } from '@/hooks/use-toast';
+import { FileUploader } from '../components/FileUploader';
+import { CodeViewer } from '../components/CodeViewer';
+import { PrivacyBanner } from '../components/PrivacyBanner';
+import { ActionBar } from '../components/ActionBar';
+import { parseSwaggerFile } from '../utils/swaggerParser';
+import { generatePactTests } from '../utils/pactGenerator';
+import { downloadZip } from '../utils/downloadUtils';
+import { useToast } from '../hooks/use-toast';
 
 interface GeneratedTest {
   filename: string;

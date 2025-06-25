@@ -1,7 +1,6 @@
-
 import React, { useEffect, useRef } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '../hooks/use-toast';
 
 interface GeneratedTest {
   filename: string;
