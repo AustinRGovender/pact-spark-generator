@@ -1,5 +1,5 @@
 
-import SwaggerParser from '@apidevtools/swagger-parser';
+import * as SwaggerParser from '@apidevtools/swagger-parser';
 
 export interface ParsedOperation {
   path: string;
