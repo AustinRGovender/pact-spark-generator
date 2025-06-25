@@ -23,7 +23,4 @@ export default defineConfig(({ mode }) => ({
   define: {
     global: 'globalThis',
   },
-  optimizeDeps: {
-    exclude: ['@apidevtools/swagger-parser']
-  }
 }));
