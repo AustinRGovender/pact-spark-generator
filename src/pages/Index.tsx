@@ -2,12 +2,17 @@
 import React, { useState, useCallback } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodeViewer } from '../components/CodeViewer';
+import { FileEditor } from '../components/FileEditor';
+import { TestExecutor } from '../components/TestExecutor';
+import { TestModeToggle } from '../components/TestModeToggle';
 import { PrivacyBanner } from '../components/PrivacyBanner';
 import { ActionBar } from '../components/ActionBar';
+import { Button } from '@/components/ui/button';
 import { parseSwaggerFile } from '../utils/swaggerParser';
 import { generatePactTests } from '../utils/pactGenerator';
 import { downloadZip } from '../utils/downloadUtils';
 import { useToast } from '../hooks/use-toast';
+import { Edit } from 'lucide-react';
 
 interface GeneratedTest {
   filename: string;
@@ -21,6 +26,8 @@ const Index = () => {
   const [generatedTests, setGeneratedTests] = useState<GeneratedTest[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedTest, setSelectedTest] = useState<GeneratedTest | null>(null);
+  const [editingTest, setEditingTest] = useState<GeneratedTest | null>(null);
+  const [isProviderMode, setIsProviderMode] = useState(false);
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(async (files: File[]) => {
@@ -32,7 +39,7 @@ const Index = () => {
       for (const file of files) {
         const content = await file.text();
         const parsedSpec = await parseSwaggerFile(content, file.name);
-        const tests = generatePactTests(parsedSpec);
+        const tests = generatePactTests(parsedSpec, isProviderMode);
         allTests.push(...tests);
       }
       
@@ -43,7 +50,7 @@ const Index = () => {
       
       toast({
         title: "Tests Generated Successfully",
-        description: `Generated ${allTests.length} PactJS test${allTests.length === 1 ? '' : 's'} from ${files.length} file${files.length === 1 ? '' : 's'}`,
+        description: `Generated ${allTests.length} PactJS ${isProviderMode ? 'provider' : 'consumer'} test${allTests.length === 1 ? '' : 's'} from ${files.length} file${files.length === 1 ? '' : 's'}`,
       });
     } catch (error) {
       console.error('Error generating tests:', error);
@@ -55,22 +62,23 @@ const Index = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [toast]);
+  }, [toast, isProviderMode]);
 
   const handleReset = useCallback(() => {
     setGeneratedTests([]);
     setSelectedTest(null);
+    setEditingTest(null);
   }, []);
 
   const handleDownloadZip = useCallback(async () => {
     if (generatedTests.length > 0) {
-      await downloadZip(generatedTests);
+      await downloadZip(generatedTests, isProviderMode);
       toast({
         title: "Download Started",
-        description: "Your PactJS test suite is being downloaded as a ZIP file",
+        description: `Your PactJS ${isProviderMode ? 'provider' : 'consumer'} test suite is being downloaded as a ZIP file`,
       });
     }
-  }, [generatedTests, toast]);
+  }, [generatedTests, toast, isProviderMode]);
 
   const handleCopyAll = useCallback(() => {
     const allContent = generatedTests.map(test => 
@@ -84,6 +92,42 @@ const Index = () => {
     });
   }, [generatedTests, toast]);
 
+  const handleEditTest = (test: GeneratedTest) => {
+    setEditingTest(test);
+  };
+
+  const handleSaveTest = (updatedTest: GeneratedTest) => {
+    setGeneratedTests(prev => 
+      prev.map(test => 
+        test.filename === updatedTest.filename ? updatedTest : test
+      )
+    );
+    
+    if (selectedTest?.filename === updatedTest.filename) {
+      setSelectedTest(updatedTest);
+    }
+    
+    setEditingTest(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTest(null);
+  };
+
+  const handleModeToggle = (providerMode: boolean) => {
+    setIsProviderMode(providerMode);
+    // Clear existing tests when switching modes
+    if (generatedTests.length > 0) {
+      setGeneratedTests([]);
+      setSelectedTest(null);
+      setEditingTest(null);
+      toast({
+        title: "Mode Changed",
+        description: `Switched to ${providerMode ? 'Provider' : 'Consumer'} mode. Please regenerate your tests.`,
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <PrivacyBanner />
@@ -91,18 +135,36 @@ const Index = () => {
       <div className="container mx-auto px-4 py-8">
         {generatedTests.length === 0 ? (
           <div className="min-h-[80vh] flex items-center justify-center">
-            <FileUploader 
-              onFilesUpload={handleFileUpload} 
-              isLoading={isGenerating}
-            />
+            <div className="space-y-6 text-center">
+              <TestModeToggle 
+                isProviderMode={isProviderMode}
+                onToggle={handleModeToggle}
+              />
+              <FileUploader 
+                onFilesUpload={handleFileUpload} 
+                isLoading={isGenerating}
+              />
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <TestModeToggle 
+                isProviderMode={isProviderMode}
+                onToggle={handleModeToggle}
+              />
+            </div>
+            
             <ActionBar
               testsCount={generatedTests.length}
               onCopyAll={handleCopyAll}
               onDownloadZip={handleDownloadZip}
               onReset={handleReset}
+            />
+            
+            <TestExecutor 
+              tests={generatedTests}
+              isProviderMode={isProviderMode}
             />
             
             <div className="grid lg:grid-cols-4 gap-6">
@@ -113,31 +175,52 @@ const Index = () => {
                   </h3>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {generatedTests.map((test, index) => (
-                      <button
+                      <div
                         key={index}
-                        onClick={() => setSelectedTest(test)}
-                        className={`w-full text-left p-3 rounded-xl transition-all duration-200 ${
+                        className={`p-3 rounded-xl transition-all duration-200 ${
                           selectedTest === test
                             ? 'bg-[#bbc7fe]/30 border border-[#bbc7fe]/50'
                             : 'hover:bg-slate-100/50 border border-transparent'
                         }`}
                       >
-                        <div className="font-medium text-slate-800 text-sm truncate">
-                          {test.endpoint}
-                        </div>
-                        <div className="text-xs text-slate-600 flex gap-2">
-                          <span className="uppercase font-mono">{test.method}</span>
-                          <span>•</span>
-                          <span>{test.tag}</span>
-                        </div>
-                      </button>
+                        <button
+                          onClick={() => setSelectedTest(test)}
+                          className="w-full text-left"
+                        >
+                          <div className="font-medium text-slate-800 text-sm truncate">
+                            {test.endpoint}
+                          </div>
+                          <div className="text-xs text-slate-600 flex gap-2">
+                            <span className="uppercase font-mono">{test.method}</span>
+                            <span>•</span>
+                            <span>{test.tag}</span>
+                          </div>
+                        </button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditTest(test)}
+                          className="mt-2 w-full"
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </div>
               </div>
 
               <div className="lg:col-span-3">
-                {selectedTest && <CodeViewer test={selectedTest} />}
+                {editingTest ? (
+                  <FileEditor
+                    test={editingTest}
+                    onSave={handleSaveTest}
+                    onCancel={handleCancelEdit}
+                  />
+                ) : (
+                  selectedTest && <CodeViewer test={selectedTest} />
+                )}
               </div>
             </div>
           </div>

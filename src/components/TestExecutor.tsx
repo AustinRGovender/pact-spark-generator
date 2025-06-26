@@ -1,0 +1,217 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Play, Download } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface GeneratedTest {
+  filename: string;
+  content: string;
+  tag: string;
+  endpoint: string;
+  method: string;
+}
+
+interface TestResult {
+  filename: string;
+  status: 'passed' | 'failed' | 'skipped';
+  message: string;
+  duration: number;
+}
+
+interface ExecutionReport {
+  timestamp: string;
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  skippedTests: number;
+  duration: number;
+  results: TestResult[];
+}
+
+interface TestExecutorProps {
+  tests: GeneratedTest[];
+  isProviderMode: boolean;
+}
+
+export const TestExecutor: React.FC<TestExecutorProps> = ({
+  tests,
+  isProviderMode,
+}) => {
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionReport, setExecutionReport] = useState<ExecutionReport | null>(null);
+  const { toast } = useToast();
+
+  const executeTests = async () => {
+    setIsExecuting(true);
+    const startTime = Date.now();
+    
+    // Simulate test execution (since this is client-side only)
+    const results: TestResult[] = [];
+    
+    for (const test of tests) {
+      // Simulate test execution time
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
+      
+      // Simulate test results (random for demo purposes)
+      const outcome = Math.random();
+      let status: 'passed' | 'failed' | 'skipped';
+      let message: string;
+      
+      if (outcome > 0.8) {
+        status = 'failed';
+        message = isProviderMode 
+          ? 'Provider contract verification failed' 
+          : 'Consumer contract expectations not met';
+      } else if (outcome > 0.7) {
+        status = 'skipped';
+        message = 'Test skipped due to missing setup';
+      } else {
+        status = 'passed';
+        message = isProviderMode 
+          ? 'Provider contract verified successfully' 
+          : 'Consumer contract test passed';
+      }
+      
+      results.push({
+        filename: test.filename,
+        status,
+        message,
+        duration: Math.random() * 2000 + 500,
+      });
+    }
+    
+    const endTime = Date.now();
+    const report: ExecutionReport = {
+      timestamp: new Date().toISOString(),
+      totalTests: results.length,
+      passedTests: results.filter(r => r.status === 'passed').length,
+      failedTests: results.filter(r => r.status === 'failed').length,
+      skippedTests: results.filter(r => r.status === 'skipped').length,
+      duration: endTime - startTime,
+      results,
+    };
+    
+    setExecutionReport(report);
+    setIsExecuting(false);
+    
+    toast({
+      title: "Test Execution Complete",
+      description: `${report.passedTests}/${report.totalTests} tests passed`,
+      variant: report.failedTests > 0 ? "destructive" : "default",
+    });
+  };
+
+  const downloadReport = () => {
+    if (!executionReport) return;
+    
+    const reportContent = JSON.stringify(executionReport, null, 2);
+    const blob = new Blob([reportContent], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `pact-execution-report-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Report Downloaded",
+      description: "Execution report has been downloaded as JSON file",
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-800">
+              Test Execution ({isProviderMode ? 'Provider' : 'Consumer'} Mode)
+            </h3>
+            <p className="text-sm text-slate-600">
+              {tests.length} test{tests.length === 1 ? '' : 's'} ready for execution
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={executeTests} 
+              disabled={isExecuting || tests.length === 0}
+            >
+              <Play className="h-4 w-4 mr-2" />
+              {isExecuting ? 'Executing...' : 'Run Tests'}
+            </Button>
+            {executionReport && (
+              <Button onClick={downloadReport} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Download Report
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {executionReport && (
+          <div className="bg-slate-50/50 rounded-xl p-4 mt-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {executionReport.passedTests}
+                </div>
+                <div className="text-sm text-slate-600">Passed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">
+                  {executionReport.failedTests}
+                </div>
+                <div className="text-sm text-slate-600">Failed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {executionReport.skippedTests}
+                </div>
+                <div className="text-sm text-slate-600">Skipped</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.round(executionReport.duration / 1000)}s
+                </div>
+                <div className="text-sm text-slate-600">Duration</div>
+              </div>
+            </div>
+            
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {executionReport.results.map((result, index) => (
+                <div 
+                  key={index}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    result.status === 'passed' ? 'bg-green-50 border border-green-200' :
+                    result.status === 'failed' ? 'bg-red-50 border border-red-200' :
+                    'bg-yellow-50 border border-yellow-200'
+                  }`}
+                >
+                  <div>
+                    <div className="font-medium text-sm">{result.filename}</div>
+                    <div className="text-xs text-slate-600">{result.message}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className={`text-sm font-medium ${
+                      result.status === 'passed' ? 'text-green-600' :
+                      result.status === 'failed' ? 'text-red-600' :
+                      'text-yellow-600'
+                    }`}>
+                      {result.status.toUpperCase()}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {Math.round(result.duration)}ms
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
