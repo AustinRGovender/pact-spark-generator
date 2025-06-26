@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodeViewer } from '../components/CodeViewer';
@@ -133,10 +134,10 @@ const Index = () => {
       <ShaderBackground />
       <PrivacyBanner />
       
-      <div className="container mx-auto px-4 py-8 relative z-10">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 relative z-10">
         {generatedTests.length === 0 ? (
           <div className="min-h-[80vh] flex items-center justify-center">
-            <div className="space-y-6 text-center">
+            <div className="space-y-6 text-center px-4">
               <TestModeToggle 
                 isProviderMode={isProviderMode}
                 onToggle={handleModeToggle}
@@ -148,8 +149,8 @@ const Index = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex justify-center sm:justify-between items-center">
               <TestModeToggle 
                 isProviderMode={isProviderMode}
                 onToggle={handleModeToggle}
@@ -168,17 +169,17 @@ const Index = () => {
               isProviderMode={isProviderMode}
             />
             
-            <div className="grid lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-1">
-                <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-xl p-6">
-                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6">
+              <div className="order-2 lg:order-1 lg:col-span-1">
+                <div className="bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">
                     Generated Tests ({generatedTests.length})
                   </h3>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto">
                     {generatedTests.map((test, index) => (
                       <div
                         key={index}
-                        className={`p-3 rounded-xl transition-all duration-200 ${
+                        className={`p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-200 ${
                           selectedTest === test
                             ? 'bg-[#bbc7fe]/30 border border-[#bbc7fe]/50'
                             : 'hover:bg-slate-100/50 border border-transparent'
@@ -186,22 +187,22 @@ const Index = () => {
                       >
                         <button
                           onClick={() => setSelectedTest(test)}
-                          className="w-full text-left"
+                          className="w-full text-left mb-2"
                         >
-                          <div className="font-medium text-slate-800 text-sm truncate">
+                          <div className="font-medium text-slate-800 text-xs sm:text-sm truncate">
                             {test.endpoint}
                           </div>
                           <div className="text-xs text-slate-600 flex gap-2">
                             <span className="uppercase font-mono">{test.method}</span>
                             <span>•</span>
-                            <span>{test.tag}</span>
+                            <span className="truncate">{test.tag}</span>
                           </div>
                         </button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleEditTest(test)}
-                          className="mt-2 w-full"
+                          className="w-full h-8 text-xs"
                         >
                           <Edit className="h-3 w-3 mr-1" />
                           Edit
@@ -212,7 +213,7 @@ const Index = () => {
                 </div>
               </div>
 
-              <div className="lg:col-span-3">
+              <div className="order-1 lg:order-2 lg:col-span-3">
                 {editingTest ? (
                   <FileEditor
                     test={editingTest}

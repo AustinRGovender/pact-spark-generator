@@ -124,78 +124,80 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/20 shadow-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-800">
+      <div className="bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div className="w-full sm:w-auto">
+            <h3 className="text-base sm:text-lg font-semibold text-slate-800">
               Test Execution ({isProviderMode ? 'Provider' : 'Consumer'} Mode)
             </h3>
-            <p className="text-sm text-slate-600">
+            <p className="text-xs sm:text-sm text-slate-600">
               {tests.length} test{tests.length === 1 ? '' : 's'} ready for execution
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button 
               onClick={executeTests} 
               disabled={isExecuting || tests.length === 0}
+              className="flex-1 sm:flex-none text-xs sm:text-sm"
             >
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="h-3 sm:h-4 w-3 sm:w-4 mr-1 sm:mr-2" />
               {isExecuting ? 'Executing...' : 'Run Tests'}
             </Button>
             {executionReport && (
-              <Button onClick={downloadReport} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Download Report
+              <Button onClick={downloadReport} variant="outline" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                <Download className="h-3 sm:h-4 w-3 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Download Report</span>
+                <span className="sm:hidden">Report</span>
               </Button>
             )}
           </div>
         </div>
         
         {executionReport && (
-          <div className="bg-slate-50/50 rounded-xl p-4 mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="bg-slate-50/50 rounded-xl p-3 sm:p-4 mt-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">
                   {executionReport.passedTests}
                 </div>
-                <div className="text-sm text-slate-600">Passed</div>
+                <div className="text-xs sm:text-sm text-slate-600">Passed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-xl sm:text-2xl font-bold text-red-600">
                   {executionReport.failedTests}
                 </div>
-                <div className="text-sm text-slate-600">Failed</div>
+                <div className="text-xs sm:text-sm text-slate-600">Failed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="text-xl sm:text-2xl font-bold text-yellow-600">
                   {executionReport.skippedTests}
                 </div>
-                <div className="text-sm text-slate-600">Skipped</div>
+                <div className="text-xs sm:text-sm text-slate-600">Skipped</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600">
                   {Math.round(executionReport.duration / 1000)}s
                 </div>
-                <div className="text-sm text-slate-600">Duration</div>
+                <div className="text-xs sm:text-sm text-slate-600">Duration</div>
               </div>
             </div>
             
-            <div className="space-y-2 max-h-64 overflow-y-auto">
+            <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
               {executionReport.results.map((result, index) => (
                 <div 
                   key={index}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
+                  className={`flex items-center justify-between p-2 sm:p-3 rounded-lg ${
                     result.status === 'passed' ? 'bg-green-50 border border-green-200' :
                     result.status === 'failed' ? 'bg-red-50 border border-red-200' :
                     'bg-yellow-50 border border-yellow-200'
                   }`}
                 >
-                  <div>
-                    <div className="font-medium text-sm">{result.filename}</div>
-                    <div className="text-xs text-slate-600">{result.message}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-xs sm:text-sm truncate">{result.filename}</div>
+                    <div className="text-xs text-slate-600 truncate">{result.message}</div>
                   </div>
-                  <div className="text-right">
-                    <div className={`text-sm font-medium ${
+                  <div className="text-right ml-2 flex-shrink-0">
+                    <div className={`text-xs sm:text-sm font-medium ${
                       result.status === 'passed' ? 'text-green-600' :
                       result.status === 'failed' ? 'text-red-600' :
                       'text-yellow-600'

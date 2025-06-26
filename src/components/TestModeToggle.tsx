@@ -13,8 +13,8 @@ export const TestModeToggle: React.FC<TestModeToggleProps> = ({
   onToggle,
 }) => {
   return (
-    <div className="flex items-center space-x-3 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg p-4">
-      <Label htmlFor="test-mode" className="text-slate-700 font-medium">
+    <div className="flex items-center space-x-2 sm:space-x-3 bg-white/70 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/20 shadow-lg p-3 sm:p-4">
+      <Label htmlFor="test-mode" className="text-slate-700 font-medium text-xs sm:text-sm">
         Consumer Mode
       </Label>
       <Switch
@@ -22,7 +22,7 @@ export const TestModeToggle: React.FC<TestModeToggleProps> = ({
         checked={isProviderMode}
         onCheckedChange={onToggle}
       />
-      <Label htmlFor="test-mode" className="text-slate-700 font-medium">
+      <Label htmlFor="test-mode" className="text-slate-700 font-medium text-xs sm:text-sm">
         Provider Mode
       </Label>
     </div>
