@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodeViewer } from '../components/CodeViewer';
@@ -7,6 +6,7 @@ import { TestExecutor } from '../components/TestExecutor';
 import { TestModeToggle } from '../components/TestModeToggle';
 import { PrivacyBanner } from '../components/PrivacyBanner';
 import { ActionBar } from '../components/ActionBar';
+import { ShaderBackground } from '../components/ShaderBackground';
 import { Button } from '@/components/ui/button';
 import { parseSwaggerFile } from '../utils/swaggerParser';
 import { generatePactTests } from '../utils/pactGenerator';
@@ -129,10 +129,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen relative">
+      <ShaderBackground />
       <PrivacyBanner />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 relative z-10">
         {generatedTests.length === 0 ? (
           <div className="min-h-[80vh] flex items-center justify-center">
             <div className="space-y-6 text-center">
