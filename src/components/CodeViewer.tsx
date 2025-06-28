@@ -2,6 +2,7 @@
 import React from 'react';
 import { Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SyntaxHighlighter } from './SyntaxHighlighter';
 
 interface GeneratedTest {
   filename: string;
@@ -50,11 +51,14 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ test }) => {
       </div>
       
       <div className="p-4 sm:p-6">
-        <pre className="bg-slate-50/50 rounded-xl p-3 sm:p-4 overflow-x-auto text-xs sm:text-sm">
-          <code className="text-slate-800 whitespace-pre-wrap">
-            {test.content}
-          </code>
-        </pre>
+        <div className="rounded-xl overflow-hidden border border-slate-200/50">
+          <SyntaxHighlighter
+            code={test.content}
+            language="javascript"
+            showLineNumbers={true}
+            className="text-xs sm:text-sm"
+          />
+        </div>
       </div>
     </div>
   );
