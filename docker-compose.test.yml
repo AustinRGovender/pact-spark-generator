@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  pact-consumer-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: pact-consumer-tests
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./pacts:/app/pacts
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+      - PACT_BROKER_BASE_URL=${PACT_BROKER_BASE_URL:-}
+      - PACT_BROKER_TOKEN=${PACT_BROKER_TOKEN:-}
+    networks:
+      - pact-network
+    profiles:
+      - consumer
+
+  pact-provider-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: pact-provider-tests
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./pacts:/app/pacts:ro
+      - /app/node_modules
+    environment:
+      - NODE_ENV=test
+      - PROVIDER_BASE_URL=${PROVIDER_BASE_URL:-http://localhost:3000}
+      - PACT_BROKER_BASE_URL=${PACT_BROKER_BASE_URL:-}
+      - PACT_BROKER_TOKEN=${PACT_BROKER_TOKEN:-}
+    networks:
+      - pact-network
+    profiles:
+      - provider
+
+  pact-broker:
+    image: pactfoundation/pact-broker:latest
+    container_name: pact-broker
+    environment:
+      - PACT_BROKER_DATABASE_URL=sqlite:///pact_broker.sqlite
+      - PACT_BROKER_LOG_LEVEL=INFO
+    volumes:
+      - pact-broker-data:/home/pact_broker
+    ports:
+      - "9292:9292"
+    networks:
+      - pact-network
+    profiles:
+      - broker
+
+networks:
+  pact-network:
+    driver: bridge
+
+volumes:
+  pact-broker-data:

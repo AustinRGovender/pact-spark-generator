@@ -1,0 +1,32 @@
+# Test execution environment for PactJS tests
+FROM node:18-alpine
+
+# Install necessary tools
+RUN apk add --no-cache \
+    git \
+    bash \
+    curl
+
+# Create app directory
+WORKDIR /app
+
+# Create non-root user for security
+RUN addgroup -g 1001 testuser && \
+    adduser -D -s /bin/bash -u 1001 -G testuser testuser
+
+# Copy package management files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Create test directory with proper permissions
+RUN mkdir -p /app/tests && \
+    chown -R testuser:testuser /app
+
+# Switch to non-root user
+USER testuser
+
+# Default command
+CMD ["npm", "test"]
