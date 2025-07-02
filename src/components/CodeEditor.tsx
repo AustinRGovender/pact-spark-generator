@@ -1,7 +1,6 @@
 
-import React, { useRef, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import React, { useRef } from 'react';
+import Editor, { Monaco } from '@monaco-editor/react';
 
 interface CodeEditorProps {
   value: string;
@@ -20,9 +19,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   readOnly = false,
   className = '',
 }) => {
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<any>(null);
 
-  const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
+  const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
     
     // Configure editor options
