@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Play, Download, Container } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { dockerManager, DockerExecutionConfig } from '@/utils/dockerManager';
+import { useDockerConnections } from '@/hooks/useDockerConnections';
 import { DockerStatus } from './DockerStatus';
 
 interface GeneratedTest {
@@ -45,6 +46,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
   const [dockerAvailable, setDockerAvailable] = useState(false);
   const [useDocker, setUseDocker] = useState(true);
   const { toast } = useToast();
+  const { activeConnection } = useDockerConnections();
 
   const executeTests = async () => {
     setIsExecuting(true);
@@ -93,6 +95,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
           PACT_MODE: isProviderMode ? 'provider' : 'consumer',
         },
         timeout: 30000,
+        connection: activeConnection?.settings,
       };
 
       const dockerResult = await dockerManager.executeTests(config);
@@ -195,7 +198,10 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
             <div className="flex items-center gap-2 mt-1">
               <Container className="h-3 w-3 text-slate-500" />
               <span className="text-xs text-slate-500">
-                {useDocker && dockerAvailable ? 'Docker execution enabled' : 'Simulated execution mode'}
+                {useDocker && dockerAvailable 
+                  ? `Docker execution via ${activeConnection?.settings.name || 'Local Docker'}` 
+                  : 'Simulated execution mode'
+                }
               </span>
             </div>
           </div>

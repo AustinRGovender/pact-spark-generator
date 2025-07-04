@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Loader2, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { dockerManager } from '@/utils/dockerManager';
+import { useDockerConnections } from '@/hooks/useDockerConnections';
+import { DockerSettings } from './DockerSettings';
 
 interface DockerStatusProps {
   onStatusChange?: (available: boolean) => void;
@@ -10,17 +13,27 @@ export const DockerStatus: React.FC<DockerStatusProps> = ({ onStatusChange }) =>
   const [isChecking, setIsChecking] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const { activeConnection, updateConnectionStatus } = useDockerConnections();
 
   const checkDockerStatus = async () => {
     setIsChecking(true);
     try {
-      const available = await dockerManager.checkDockerAvailability();
+      const available = await dockerManager.checkDockerAvailability(activeConnection?.settings);
       setIsAvailable(available);
       setLastChecked(new Date());
       onStatusChange?.(available);
+      
+      // Update connection status
+      if (activeConnection) {
+        updateConnectionStatus(activeConnection.settings.id, available ? 'healthy' : 'unhealthy');
+      }
     } catch (error) {
       setIsAvailable(false);
       onStatusChange?.(false);
+      if (activeConnection) {
+        updateConnectionStatus(activeConnection.settings.id, 'unhealthy');
+      }
     } finally {
       setIsChecking(false);
     }
@@ -42,8 +55,14 @@ export const DockerStatus: React.FC<DockerStatusProps> = ({ onStatusChange }) =>
 
   const getStatusText = () => {
     if (isChecking) return 'Checking Docker availability...';
-    if (isAvailable) return 'Docker available';
-    return 'Docker unavailable';
+    if (isAvailable) {
+      return activeConnection 
+        ? `${activeConnection.settings.name} connected`
+        : 'Docker available';
+    }
+    return activeConnection
+      ? `${activeConnection.settings.name} unavailable`
+      : 'Docker unavailable';
   };
 
   const getStatusColor = () => {
@@ -71,13 +90,30 @@ export const DockerStatus: React.FC<DockerStatusProps> = ({ onStatusChange }) =>
           <span>Simulated mode</span>
         </div>
       )}
-      <button
-        onClick={checkDockerStatus}
-        disabled={isChecking}
-        className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50"
-      >
-        Refresh
-      </button>
+      <div className="flex gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowSettings(true)}
+          className="h-6 px-2 text-xs"
+        >
+          <Settings className="h-3 w-3" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={checkDockerStatus}
+          disabled={isChecking}
+          className="h-6 px-2 text-xs"
+        >
+          Refresh
+        </Button>
+      </div>
+      
+      <DockerSettings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </div>
   );
 };

@@ -1,17 +1,7 @@
-export interface DockerExecutionConfig {
-  testFiles: string[];
-  isProviderMode: boolean;
-  environment?: Record<string, string>;
-  timeout?: number;
-}
+import { DockerConnectionSettings, DockerExecutionConfig, DockerExecutionResult, DockerInfo } from '@/types/dockerTypes';
 
-export interface DockerExecutionResult {
-  success: boolean;
-  output: string;
-  error?: string;
-  exitCode: number;
-  duration: number;
-}
+// Re-export for backwards compatibility
+export type { DockerExecutionConfig, DockerExecutionResult };
 
 export class DockerManager {
   private static instance: DockerManager;
@@ -25,12 +15,49 @@ export class DockerManager {
 
   private constructor() {}
 
-  async checkDockerAvailability(): Promise<boolean> {
-    // In a real implementation, this would check if Docker is available
-    // For now, we'll simulate Docker availability
+  async checkDockerAvailability(connection?: DockerConnectionSettings): Promise<boolean> {
+    // In a real implementation, this would test the specific Docker connection
+    // For now, we'll simulate Docker availability based on connection type
     return new Promise((resolve) => {
-      setTimeout(() => resolve(true), 100);
+      const delay = connection?.type === 'remote-tcp' || connection?.type === 'remote-ssh' ? 300 : 100;
+      setTimeout(() => {
+        // Simulate some connections failing
+        const success = connection?.type === 'custom' ? Math.random() > 0.3 : true;
+        resolve(success);
+      }, delay);
     });
+  }
+
+  async testConnection(connection: DockerConnectionSettings): Promise<{ success: boolean; info?: DockerInfo; error?: string }> {
+    try {
+      // Simulate connection testing
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Simulate different connection results
+      if (connection.type === 'custom' && Math.random() > 0.7) {
+        throw new Error('Custom connection failed');
+      }
+      
+      if (connection.type === 'remote-ssh' && Math.random() > 0.8) {
+        throw new Error('SSH connection timeout');
+      }
+
+      const mockInfo: DockerInfo = {
+        version: '24.0.0',
+        apiVersion: '1.43',
+        platform: connection.type === 'remote-tcp' ? 'linux/amd64' : 'local',
+        architecture: 'x86_64',
+        containers: Math.floor(Math.random() * 10),
+        images: Math.floor(Math.random() * 50) + 10
+      };
+
+      return { success: true, info: mockInfo };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown connection error' 
+      };
+    }
   }
 
   async buildTestImage(): Promise<boolean> {
@@ -42,9 +69,16 @@ export class DockerManager {
 
   async executeTests(config: DockerExecutionConfig): Promise<DockerExecutionResult> {
     const startTime = Date.now();
+    const containerId = `pact-test-${Date.now()}`;
     
     try {
-      // Simulate containerized test execution
+      // Use connection-specific configuration
+      const connection = config.connection;
+      if (connection) {
+        console.log(`Executing tests using ${connection.name} (${connection.type})`);
+      }
+      
+      // Simulate containerized test execution with connection-specific behavior
       await this.prepareTestEnvironment(config);
       const result = await this.runTestsInContainer(config);
       
@@ -53,7 +87,8 @@ export class DockerManager {
         output: result.output,
         error: result.error,
         exitCode: result.exitCode,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
+        containerId
       };
     } catch (error) {
       return {
@@ -61,7 +96,8 @@ export class DockerManager {
         output: '',
         error: error instanceof Error ? error.message : 'Unknown error',
         exitCode: 1,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
+        containerId
       };
     }
   }
@@ -108,8 +144,11 @@ export class DockerManager {
 
   private generateSuccessOutput(config: DockerExecutionConfig, profile: string): string {
     const testCount = config.testFiles.length;
+    const connection = config.connection;
+    const connectionInfo = connection ? ` via ${connection.name}` : '';
+    
     return `
-Docker container started successfully
+Docker container started successfully${connectionInfo}
 Running ${profile} tests...
 
 ✓ Test environment initialized
@@ -117,6 +156,7 @@ Running ${profile} tests...
 ✓ ${testCount} test file(s) executed
 ✓ All interactions verified
 ✓ Pact files generated successfully
+${connection?.type !== 'local' ? `✓ Remote execution completed on ${connection?.config.host || connection?.config.contextName}` : ''}
 
 Tests: ${testCount} passed, 0 failed
 Time: ${(Math.random() * 5 + 2).toFixed(2)}s
