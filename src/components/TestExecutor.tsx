@@ -5,7 +5,9 @@ import { Play, Download, Container } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { dockerManager, DockerExecutionConfig } from '@/utils/dockerManager';
 import { useDockerConnections } from '@/hooks/useDockerConnections';
+import { useProviderServices } from '@/hooks/useProviderServices';
 import { DockerStatus } from './DockerStatus';
+import { ProviderServiceStatus } from './ProviderServiceStatus';
 
 interface GeneratedTest {
   filename: string;
@@ -45,8 +47,10 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
   const [executionReport, setExecutionReport] = useState<ExecutionReport | null>(null);
   const [dockerAvailable, setDockerAvailable] = useState(false);
   const [useDocker, setUseDocker] = useState(true);
+  const [providerServiceStatus, setProviderServiceStatus] = useState<any>(null);
   const { toast } = useToast();
   const { activeConnection } = useDockerConnections();
+  const { activeService } = useProviderServices();
 
   const executeTests = async () => {
     setIsExecuting(true);
@@ -93,9 +97,11 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
         environment: {
           NODE_ENV: 'test',
           PACT_MODE: isProviderMode ? 'provider' : 'consumer',
+          PROVIDER_URL: activeService?.config.url,
         },
         timeout: 30000,
         connection: activeConnection?.settings,
+        providerService: activeService?.config,
       };
 
       const dockerResult = await dockerManager.executeTests(config);
@@ -187,6 +193,13 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
           <DockerStatus onStatusChange={setDockerAvailable} />
         </div>
 
+        {/* Provider Service Status - Only show in consumer mode */}
+        {!isProviderMode && (
+          <div className="mb-4">
+            <ProviderServiceStatus onStatusChange={setProviderServiceStatus} />
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div className="w-full sm:w-auto">
             <h3 className="text-base sm:text-lg font-semibold text-slate-800">
@@ -202,6 +215,9 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
                   ? `Docker execution via ${activeConnection?.settings.name || 'Local Docker'}` 
                   : 'Simulated execution mode'
                 }
+                {!isProviderMode && activeService && (
+                  ` • Provider: ${activeService.config.name}`
+                )}
               </span>
             </div>
           </div>

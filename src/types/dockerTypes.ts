@@ -60,12 +60,38 @@ export interface DockerInfo {
   images: number;
 }
 
+export interface ProviderServiceConfig {
+  id: string;
+  name: string;
+  url: string;
+  healthCheckPath?: string;
+  authentication?: {
+    type: 'none' | 'bearer' | 'api-key' | 'basic';
+    token?: string;
+    apiKey?: string;
+    apiKeyHeader?: string;
+    username?: string;
+    password?: string;
+  };
+  environment: 'local' | 'development' | 'staging' | 'production';
+  isActive: boolean;
+}
+
+export interface ProviderServiceStatus {
+  config: ProviderServiceConfig;
+  isHealthy: boolean;
+  lastChecked: Date | null;
+  responseTime?: number;
+  error?: string;
+}
+
 export interface DockerExecutionConfig {
   testFiles: string[];
   isProviderMode: boolean;
   environment?: Record<string, string>;
   timeout?: number;
   connection?: DockerConnectionSettings;
+  providerService?: ProviderServiceConfig;
 }
 
 export interface DockerExecutionResult {
