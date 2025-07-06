@@ -48,6 +48,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
   const [dockerAvailable, setDockerAvailable] = useState(false);
   const [useDocker, setUseDocker] = useState(true);
   const [providerServiceStatus, setProviderServiceStatus] = useState<any>(null);
+  const [hostProviderAndTest, setHostProviderAndTest] = useState(false);
   const { toast } = useToast();
   const { activeConnection } = useDockerConnections();
   const { activeService } = useProviderServices();
@@ -93,11 +94,12 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
     try {
       const config: DockerExecutionConfig = {
         testFiles: tests.map(test => test.content),
-        isProviderMode,
+        isProviderMode: isProviderMode && !hostProviderAndTest,
         environment: {
           NODE_ENV: 'test',
-          PACT_MODE: isProviderMode ? 'provider' : 'consumer',
+          PACT_MODE: isProviderMode && !hostProviderAndTest ? 'provider' : 'consumer',
           PROVIDER_URL: activeService?.config.url,
+          HOST_PROVIDER: hostProviderAndTest ? 'true' : 'false',
         },
         timeout: 30000,
         connection: activeConnection?.settings,
@@ -193,8 +195,8 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
           <DockerStatus onStatusChange={setDockerAvailable} />
         </div>
 
-        {/* Provider Service Status - Only show in consumer mode */}
-        {!isProviderMode && (
+        {/* Provider Service Status - Show in consumer mode or when hosting provider */}
+        {(!isProviderMode || hostProviderAndTest) && (
           <div className="mb-4">
             <ProviderServiceStatus onStatusChange={setProviderServiceStatus} />
           </div>
@@ -215,7 +217,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
                   ? `Docker execution via ${activeConnection?.settings.name || 'Local Docker'}` 
                   : 'Simulated execution mode'
                 }
-                {!isProviderMode && activeService && (
+                {(!isProviderMode || hostProviderAndTest) && activeService && (
                   ` • Provider: ${activeService.config.name}`
                 )}
               </span>
@@ -239,18 +241,34 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="useDocker"
-                checked={useDocker}
-                onChange={(e) => setUseDocker(e.target.checked)}
-                disabled={!dockerAvailable}
-                className="rounded border-slate-300"
-              />
-              <label htmlFor="useDocker" className="text-xs text-slate-600">
-                Use Docker execution (recommended)
-              </label>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="useDocker"
+                  checked={useDocker}
+                  onChange={(e) => setUseDocker(e.target.checked)}
+                  disabled={!dockerAvailable}
+                  className="rounded border-slate-300"
+                />
+                <label htmlFor="useDocker" className="text-xs text-slate-600">
+                  Use Docker execution (recommended)
+                </label>
+              </div>
+              {!isProviderMode && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="hostProviderAndTest"
+                    checked={hostProviderAndTest}
+                    onChange={(e) => setHostProviderAndTest(e.target.checked)}
+                    className="rounded border-slate-300"
+                  />
+                  <label htmlFor="hostProviderAndTest" className="text-xs text-slate-600">
+                    Host provider service during consumer tests
+                  </label>
+                </div>
+              )}
             </div>
           </div>
         </div>
