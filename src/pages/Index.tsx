@@ -29,6 +29,7 @@ const Index = () => {
   const [selectedTest, setSelectedTest] = useState<GeneratedTest | null>(null);
   const [editingTest, setEditingTest] = useState<GeneratedTest | null>(null);
   const [isProviderMode, setIsProviderMode] = useState(false);
+  const [providerSpecFiles, setProviderSpecFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
   const handleFileUpload = useCallback(async (files: File[]) => {
@@ -115,6 +116,10 @@ const Index = () => {
     setEditingTest(null);
   };
 
+  const handleProviderSpecUpload = useCallback((files: File[]) => {
+    setProviderSpecFiles(files);
+  }, []);
+
   const handleModeToggle = (providerMode: boolean) => {
     setIsProviderMode(providerMode);
     // Clear existing tests when switching modes
@@ -122,6 +127,7 @@ const Index = () => {
       setGeneratedTests([]);
       setSelectedTest(null);
       setEditingTest(null);
+      setProviderSpecFiles([]);
       toast({
         title: "Mode Changed",
         description: `Switched to ${providerMode ? 'Provider' : 'Consumer'} mode. Please regenerate your tests.`,
@@ -167,6 +173,7 @@ const Index = () => {
             <TestExecutor 
               tests={generatedTests}
               isProviderMode={isProviderMode}
+              onProviderSpecUpload={handleProviderSpecUpload}
             />
             
             <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6">

@@ -19,6 +19,7 @@ interface HostingStatusProps {
   hostingConfig?: {
     providerService?: any;
     useDocker?: boolean;
+    providerSpec?: string;
   };
   onHostingChange?: (services: HostedService[]) => void;
 }
@@ -160,6 +161,11 @@ export const HostingStatus: React.FC<HostingStatusProps> = ({
           <div className="text-xs text-green-700">
             <strong>Ready for testing:</strong> Consumer tests will run against the hosted provider at{' '}
             {hostedServices.find(s => s.type === 'provider')?.url}
+            {hostingConfig?.providerSpec && (
+              <div className="mt-1">
+                <strong>Using:</strong> {hostingConfig.providerSpec}
+              </div>
+            )}
           </div>
         </div>
       )}

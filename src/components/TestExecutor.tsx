@@ -9,6 +9,7 @@ import { useProviderServices } from '@/hooks/useProviderServices';
 import { DockerStatus } from './DockerStatus';
 import { ProviderServiceStatus } from './ProviderServiceStatus';
 import { HostingStatus } from './HostingStatus';
+import { ProviderSpecUploader } from './ProviderSpecUploader';
 
 interface GeneratedTest {
   filename: string;
@@ -38,11 +39,13 @@ interface ExecutionReport {
 interface TestExecutorProps {
   tests: GeneratedTest[];
   isProviderMode: boolean;
+  onProviderSpecUpload?: (files: File[]) => void;
 }
 
 export const TestExecutor: React.FC<TestExecutorProps> = ({
   tests,
   isProviderMode,
+  onProviderSpecUpload,
 }) => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionReport, setExecutionReport] = useState<ExecutionReport | null>(null);
@@ -50,6 +53,8 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
   const [useDocker, setUseDocker] = useState(true);
   const [providerServiceStatus, setProviderServiceStatus] = useState<any>(null);
   const [hostProviderAndTest, setHostProviderAndTest] = useState(false);
+  const [providerSpecUploaded, setProviderSpecUploaded] = useState(false);
+  const [isUploadingProviderSpec, setIsUploadingProviderSpec] = useState(false);
   const { toast } = useToast();
   const { activeConnection } = useDockerConnections();
   const { activeService } = useProviderServices();
@@ -168,6 +173,36 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
     return results;
   };
 
+  const handleProviderSpecUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+    
+    setIsUploadingProviderSpec(true);
+    
+    try {
+      // Process the provider spec file
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing
+      setProviderSpecUploaded(true);
+      
+      // Call the parent handler if provided
+      if (onProviderSpecUpload) {
+        onProviderSpecUpload(files);
+      }
+      
+      toast({
+        title: "Provider Spec Uploaded",
+        description: `${files[0].name} loaded successfully for provider hosting`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process provider specification",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingProviderSpec(false);
+    }
+  };
+
   const downloadReport = () => {
     if (!executionReport) return;
     
@@ -203,6 +238,17 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
           </div>
         )}
 
+        {/* Provider Spec Upload - Show when hosting provider */}
+        {!isProviderMode && hostProviderAndTest && (
+          <div className="mb-4">
+            <ProviderSpecUploader 
+              onSpecUpload={handleProviderSpecUpload}
+              isLoading={isUploadingProviderSpec}
+              hasSpec={providerSpecUploaded}
+            />
+          </div>
+        )}
+
         {/* Hosting Status - Show what's being hosted when enabled */}
         {hostProviderAndTest && (
           <div className="mb-4">
@@ -211,6 +257,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
               hostingConfig={{
                 providerService: activeService,
                 useDocker: useDocker && dockerAvailable,
+                providerSpec: providerSpecUploaded ? 'Custom provider specification' : undefined,
               }}
             />
           </div>
