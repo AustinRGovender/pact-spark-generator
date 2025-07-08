@@ -8,6 +8,7 @@ import { useDockerConnections } from '@/hooks/useDockerConnections';
 import { useProviderServices } from '@/hooks/useProviderServices';
 import { DockerStatus } from './DockerStatus';
 import { ProviderServiceStatus } from './ProviderServiceStatus';
+import { HostingStatus } from './HostingStatus';
 
 interface GeneratedTest {
   filename: string;
@@ -202,10 +203,24 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
           </div>
         )}
 
+        {/* Hosting Status - Show what's being hosted when enabled */}
+        {hostProviderAndTest && (
+          <div className="mb-4">
+            <HostingStatus 
+              isHosting={hostProviderAndTest}
+              hostingConfig={{
+                providerService: activeService,
+                useDocker: useDocker && dockerAvailable,
+              }}
+            />
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
           <div className="w-full sm:w-auto">
             <h3 className="text-base sm:text-lg font-semibold text-slate-800">
-              Test Execution ({isProviderMode ? 'Provider' : 'Consumer'} Mode)
+              Test Execution ({isProviderMode && !hostProviderAndTest ? 'Provider' : 'Consumer'} Mode)
+              {hostProviderAndTest && <span className="text-blue-600"> + Hosting</span>}
             </h3>
             <p className="text-xs sm:text-sm text-slate-600">
               {tests.length} test{tests.length === 1 ? '' : 's'} ready for execution
