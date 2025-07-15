@@ -10,6 +10,7 @@ import { DockerStatus } from './DockerStatus';
 import { ProviderServiceStatus } from './ProviderServiceStatus';
 import { HostingStatus } from './HostingStatus';
 import { ProviderSpecUploader } from './ProviderSpecUploader';
+import { TestResultsView } from './TestResultsView';
 
 interface GeneratedTest {
   filename: string;
@@ -19,12 +20,8 @@ interface GeneratedTest {
   method: string;
 }
 
-interface TestResult {
-  filename: string;
-  status: 'passed' | 'failed' | 'skipped';
-  message: string;
-  duration: number;
-}
+// Import TestResult from types file
+import { TestResult } from '@/types/dockerTypes';
 
 interface ExecutionReport {
   timestamp: string;
@@ -114,7 +111,12 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
 
       const dockerResult = await dockerManager.executeTests(config);
       
-      // Parse Docker output to create individual test results
+      // Use detailed test results from Docker execution if available
+      if (dockerResult.testResults && dockerResult.testResults.length > 0) {
+        return dockerResult.testResults;
+      }
+      
+      // Fallback: Parse Docker output to create individual test results
       for (const test of tests) {
         const success = dockerResult.success && Math.random() > 0.15; // 85% success rate
         
@@ -364,35 +366,7 @@ export const TestExecutor: React.FC<TestExecutorProps> = ({
               </div>
             </div>
             
-            <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
-              {executionReport.results.map((result, index) => (
-                <div 
-                  key={index}
-                  className={`flex items-center justify-between p-2 sm:p-3 rounded-lg ${
-                    result.status === 'passed' ? 'bg-green-50 border border-green-200' :
-                    result.status === 'failed' ? 'bg-red-50 border border-red-200' :
-                    'bg-yellow-50 border border-yellow-200'
-                  }`}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs sm:text-sm truncate">{result.filename}</div>
-                    <div className="text-xs text-slate-600 truncate">{result.message}</div>
-                  </div>
-                  <div className="text-right ml-2 flex-shrink-0">
-                    <div className={`text-xs sm:text-sm font-medium ${
-                      result.status === 'passed' ? 'text-green-600' :
-                      result.status === 'failed' ? 'text-red-600' :
-                      'text-yellow-600'
-                    }`}>
-                      {result.status.toUpperCase()}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {Math.round(result.duration)}ms
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TestResultsView results={executionReport.results} />
           </div>
         )}
       </div>

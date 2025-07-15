@@ -94,6 +94,36 @@ export interface DockerExecutionConfig {
   providerService?: ProviderServiceConfig;
 }
 
+export interface ErrorDetails {
+  stackTrace?: string;
+  filename?: string;
+  lineNumber?: number;
+  columnNumber?: number;
+  errorType: 'assertion' | 'network' | 'timeout' | 'contract_mismatch' | 'runtime' | 'syntax';
+  assertion?: {
+    expected?: any;
+    actual?: any;
+    operator?: string;
+    diff?: string;
+  };
+  context?: {
+    request?: any;
+    response?: any;
+    interaction?: any;
+  };
+  suggestions?: string[];
+  relatedFiles?: string[];
+}
+
+export interface TestResult {
+  filename: string;
+  status: 'passed' | 'failed' | 'skipped';
+  message: string;
+  duration: number;
+  errorDetails?: ErrorDetails;
+  fullLog?: string;
+}
+
 export interface DockerExecutionResult {
   success: boolean;
   output: string;
@@ -101,4 +131,5 @@ export interface DockerExecutionResult {
   exitCode: number;
   duration: number;
   containerId?: string;
+  testResults?: TestResult[];
 }
