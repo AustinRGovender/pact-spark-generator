@@ -1,5 +1,6 @@
 import { ParsedSpec, ParsedOperation } from './swaggerParser';
 import { MockDataGenerator } from './mockDataGenerator';
+import { EnhancedMockDataGenerator } from './enhancedMockDataGenerator';
 import { ErrorCaseGenerator, ErrorTestCase } from './errorCaseGenerator';
 import { PactMatchers } from './pactMatchers';
 
@@ -400,43 +401,16 @@ const generateRealisticExpectedResponse = (operation: ParsedOperation): string =
   return '{ "success": true }';
 };
 
-// Enhanced mock data generation using the new MockDataGenerator
+// Enhanced mock data generation using the new EnhancedMockDataGenerator
 const generateRealisticMockFromSchema = (schema: any, variation: 'valid' | 'invalid' | 'edge' = 'valid', includeOptional: boolean = false): any => {
   if (!schema) return {};
   
-  switch (schema.type) {
-    case 'object':
-      const obj: any = {};
-      if (schema.properties) {
-        Object.keys(schema.properties).forEach(key => {
-          const isRequired = schema.required?.includes(key) || false;
-          const shouldInclude = isRequired || (includeOptional && variation === 'valid') || (variation === 'edge' && Math.random() > 0.5);
-          
-          if (shouldInclude) {
-            obj[key] = MockDataGenerator.generateRealisticData(
-              key, 
-              { ...schema.properties[key], required: isRequired }, 
-              variation
-            );
-          }
-        });
-      }
-      return obj;
-    case 'array':
-      if (variation === 'invalid') {
-        return 'not_an_array';
-      }
-      const itemCount = variation === 'edge' ? (schema.minItems || 1) : Math.min(3, schema.maxItems || 3);
-      const result = [];
-      for (let i = 0; i < itemCount; i++) {
-        if (schema.items) {
-          result.push(MockDataGenerator.generateRealisticData(`item_${i}`, schema.items, variation));
-        }
-      }
-      return result;
-    default:
-      return MockDataGenerator.generateRealisticData('field', schema, variation);
-  }
+  return EnhancedMockDataGenerator.generateAdvancedMockData(schema, 'field', {
+    variation: variation as any,
+    includeOptional,
+    generateRealistic: true,
+    respectConstraints: true
+  });
 };
 
 const generateMockRequest = (operation: ParsedOperation): string => {

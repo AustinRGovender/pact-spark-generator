@@ -31,6 +31,9 @@ export class MockDataGenerator {
     countries: ['United States', 'Canada', 'United Kingdom', 'Germany', 'France', 'Australia'],
   };
 
+  // Legacy method - maintained for backward compatibility
+  // For new implementations, use EnhancedMockDataGenerator instead
+
   static generateRealisticData(fieldName: string, schema: SchemaConstraints, variation: 'valid' | 'invalid' | 'edge' = 'valid'): any {
     // Handle enum values
     if (schema.enum && schema.enum.length > 0) {
