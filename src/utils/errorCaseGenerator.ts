@@ -21,6 +21,13 @@ export interface ErrorTestCase {
   providerState?: string;
 }
 
+export interface EnhancedErrorTestSuite {
+  basicErrors: ErrorTestCase[];
+  boundaryTests: any[];
+  edgeCases: any[];
+  performanceTests: any[];
+}
+
 export class ErrorCaseGenerator {
   static generateErrorCases(operation: ParsedOperation): ErrorTestCase[] {
     const errorCases: ErrorTestCase[] = [];
@@ -346,5 +353,14 @@ export class ErrorCaseGenerator {
     }
     
     return modifications;
+  }
+
+  static generateEnhancedErrorTestSuite(operation: ParsedOperation): EnhancedErrorTestSuite {
+    return {
+      basicErrors: this.generateErrorCases(operation),
+      boundaryTests: [], // Will be populated by BoundaryTestGenerator
+      edgeCases: [], // Will be populated by EdgeCaseGenerator  
+      performanceTests: [] // Will be populated by PerformanceTestGenerator
+    };
   }
 }
