@@ -3,6 +3,14 @@ import { MockDataGenerator } from './mockDataGenerator';
 import { EnhancedMockDataGenerator } from './enhancedMockDataGenerator';
 import { ErrorCaseGenerator, ErrorTestCase } from './errorCaseGenerator';
 import { PactMatchers } from './pactMatchers';
+import { SecurityAnalyzer, AuthTestScenario } from './securityAnalyzer';
+import { 
+  generateAuthSetupForScenario, 
+  generateRequestAuthForScenario, 
+  generateExpectedErrorResponse,
+  generateAuthHeadersForOperation,
+  generateProviderAuthSetup
+} from './authHelpers';
 
 export interface GeneratedTest {
   filename: string;
@@ -14,6 +22,10 @@ export interface GeneratedTest {
 
 export const generatePactTests = (spec: ParsedSpec, isProviderMode: boolean = false): GeneratedTest[] => {
   const tests: GeneratedTest[] = [];
+  
+  // Analyze security schemes
+  const securityAnalyzer = new SecurityAnalyzer();
+  const securityAnalysis = securityAnalyzer.analyzeSpec(spec);
 
   spec.operations.forEach((operation) => {
     const tag = operation.tags?.[0] || 'default';
@@ -23,8 +35,8 @@ export const generatePactTests = (spec: ParsedSpec, isProviderMode: boolean = fa
     // Generate success case test
     const successFilename = `${tag}_${operation.method.toLowerCase()}_${sanitizedEndpoint}_${mode}_success.test.js`;
     const successContent = isProviderMode 
-      ? generateProviderTestContent(operation, spec)
-      : generateConsumerTestContent(operation, spec);
+      ? generateProviderTestContent(operation, spec, securityAnalysis)
+      : generateConsumerTestContent(operation, spec, securityAnalysis);
     
     tests.push({
       filename: successFilename,
@@ -33,6 +45,27 @@ export const generatePactTests = (spec: ParsedSpec, isProviderMode: boolean = fa
       endpoint: operation.path,
       method: operation.method,
     });
+
+    // Generate authentication test scenarios
+    const operationKey = `${operation.method} ${operation.path}`;
+    const operationSecurity = securityAnalysis.operationSecurity[operationKey];
+    
+    if (operationSecurity && operationSecurity.length > 0) {
+      const authScenarios = securityAnalyzer.generateAuthTestScenarios(operationKey, operationSecurity);
+      
+      authScenarios.forEach((scenario, index) => {
+        const authFilename = `${tag}_${operation.method.toLowerCase()}_${sanitizedEndpoint}_${mode}_auth_${scenario.scenario}.test.js`;
+        const authContent = generateAuthTestContent(operation, spec, scenario, isProviderMode);
+        
+        tests.push({
+          filename: authFilename,
+          content: authContent,
+          tag: `${tag}-auth`,
+          endpoint: operation.path,
+          method: operation.method,
+        });
+      });
+    }
 
     // Generate error case tests
     const errorCases = ErrorCaseGenerator.generateErrorCases(operation);
@@ -53,7 +86,87 @@ export const generatePactTests = (spec: ParsedSpec, isProviderMode: boolean = fa
   return tests;
 };
 
-const generateConsumerTestContent = (operation: ParsedOperation, spec: ParsedSpec): string => {
+const generateAuthTestContent = (operation: ParsedOperation, spec: ParsedSpec, scenario: AuthTestScenario, isProviderMode: boolean): string => {
+  const providerName = spec.info.title.replace(/\s+/g, '');
+  const consumerName = `${providerName}Consumer`;
+  
+  if (isProviderMode) {
+    return `const { Verifier } = require('@pact-foundation/pact');
+const path = require('path');
+
+describe('${operation.summary || operation.path} - Provider Auth Test: ${scenario.name}', () => {
+  it('should handle ${scenario.name.toLowerCase()} correctly', () => {
+    const opts = {
+      provider: '${providerName}',
+      providerBaseUrl: process.env.PROVIDER_BASE_URL || 'http://localhost:3000',
+      pactUrls: [
+        path.resolve(process.cwd(), 'pacts', '${consumerName.toLowerCase()}-${providerName.toLowerCase()}.json')
+      ],
+      stateHandlers: {
+        '${scenario.description}': () => {
+          console.log('Setting up auth state: ${scenario.description}');
+          return setupAuthState('${scenario.scenario}');
+        }
+      },
+      requestFilter: (req, res, next) => {
+        // Set up authentication expectations
+        ${generateProviderAuthSetup(scenario)}
+        next();
+      }
+    };
+
+    return new Verifier(opts).verifyProvider();
+  });
+});
+
+async function setupAuthState(scenario) {
+  console.log(\`Setting up auth state: \${scenario}\`);
+  // Configure your provider to handle authentication scenarios
+  return Promise.resolve('Auth state setup complete');
+}`;
+  }
+
+  return `const { Pact } = require('@pact-foundation/pact');
+const path = require('path');
+
+describe('${operation.summary || operation.path} - Consumer Auth Test: ${scenario.name}', () => {
+  const provider = new Pact({
+    consumer: '${consumerName}',
+    provider: '${providerName}',
+    dir: path.resolve(process.cwd(), 'pacts'),
+    logLevel: 'info'
+  });
+
+  beforeAll(() => provider.setup());
+  afterEach(() => provider.verify());
+  afterAll(() => provider.finalize());
+
+  it('should handle ${scenario.name.toLowerCase()}', async () => {
+    ${generateAuthSetupForScenario(scenario)}
+    
+    await provider
+      .given('${scenario.description}')
+      .uponReceiving('${operation.method} request to ${operation.path} with ${scenario.name.toLowerCase()}')
+      .withRequest({
+        method: '${operation.method}',
+        path: '${operation.path}',
+        ${generateRequestAuthForScenario(scenario)}
+      })
+      .willRespondWith({
+        status: ${scenario.expectedStatus},
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: ${generateExpectedErrorResponse(scenario, scenario.expectedStatus)}
+      });
+
+    // Make the actual request here with authentication
+    // Expect ${scenario.expectedStatus} status code
+  });
+});`;
+};
+
+const generateConsumerTestContent = (operation: ParsedOperation, spec: ParsedSpec, securityAnalysis?: any): string => {
   const providerName = spec.info.title.replace(/\s+/g, '');
   const consumerName = `${providerName}Consumer`;
   
@@ -85,7 +198,7 @@ describe('${operation.summary || operation.path} - Consumer Test', () => {
           path: '${operation.path}'${generateEnhancedRequestBody(operation)},
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json'${generateAuthHeadersForOperation(operation, securityAnalysis)}
           }
         })
         .willRespondWith({
@@ -145,7 +258,7 @@ describe('${operation.summary || operation.path} - Consumer Test', () => {
 });`;
 };
 
-const generateProviderTestContent = (operation: ParsedOperation, spec: ParsedSpec): string => {
+const generateProviderTestContent = (operation: ParsedOperation, spec: ParsedSpec, securityAnalysis?: any): string => {
   const providerName = spec.info.title.replace(/\s+/g, '');
   const consumerName = `${providerName}Consumer`;
   
