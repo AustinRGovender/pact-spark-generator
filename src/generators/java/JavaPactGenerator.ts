@@ -548,13 +548,4 @@ pact {
 
     return groupMappings[artifactId] || artifactId.split(':')[0];
   }
-
-  private toPascalCase(str: string): string {
-    return str.replace(/(?:^|[-_])(\w)/g, (_, char) => char.toUpperCase());
-  }
-
-  private toCamelCase(str: string): string {
-    const pascal = this.toPascalCase(str);
-    return pascal.charAt(0).toLowerCase() + pascal.slice(1);
-  }
 }

@@ -584,8 +584,4 @@ namespace {{namespace}}.Provider
 
     return frameworks[framework] || frameworks.nunit;
   }
-
-  private toPascalCase(str: string): string {
-    return str.replace(/(?:^|[-_\s])(\w)/g, (_, char) => char.toUpperCase());
-  }
 }

@@ -1,7 +1,8 @@
 import { ParsedSpec } from './swaggerParser';
 import { TestGenerator } from './testGenerator';
-import { JavaScriptPactGenerator } from '../generators/javascript/JavaScriptPactGenerator';
-import { SupportedLanguage, TestFramework, LanguageConfig, GeneratedProject } from '../types/testModels';
+import { LanguageGeneratorFactory } from '../generators/LanguageGeneratorFactory';
+import { SupportedLanguage, TestFramework, PackageManager, LanguageConfig, LANGUAGE_METADATA } from '../types/languageTypes';
+import JSZip from 'jszip';
 
 export interface GeneratedTest {
   filename: string;
@@ -66,63 +67,30 @@ export const generatePactProject = (
   spec: ParsedSpec, 
   config: LanguageConfig, 
   isProviderMode: boolean = false
-): GeneratedProject => {
+) => {
   const testGenerator = new TestGenerator();
-  const testSuite = testGenerator.generateTestSuite(spec, config.language, config.framework, isProviderMode);
+  const testSuite = testGenerator.generateTestSuite(spec, config.language, config.framework as any, isProviderMode);
   
-  const languageGenerator = getLanguageGenerator(config.language);
-  return languageGenerator.generateProject(testSuite, config);
+  // Generate language-specific output using the factory
+  const generatedOutput = LanguageGeneratorFactory.generateTests(testSuite, config);
+  return generatedOutput;
 };
-
-export const generatePactProjectForLanguage = (
-  spec: ParsedSpec,
-  language: SupportedLanguage,
-  framework?: TestFramework,
-  isProviderMode: boolean = false,
-  customConfig?: Partial<LanguageConfig>
-): GeneratedProject => {
-  const languageGenerator = getLanguageGenerator(language);
-  const defaultConfig = languageGenerator.getDefaultConfiguration();
-  
-  const config: LanguageConfig = {
-    ...defaultConfig,
-    language,
-    framework: framework || languageGenerator.defaultFramework,
-    ...customConfig
-  } as LanguageConfig;
-
-  const validation = languageGenerator.validateConfiguration(config);
-  if (!validation.isValid) {
-    throw new Error(`Invalid configuration: ${validation.errors.map(e => e.message).join(', ')}`);
-  }
-
-  return generatePactProject(spec, config, isProviderMode);
-};
-
-function getLanguageGenerator(language: SupportedLanguage) {
-  switch (language) {
-    case 'javascript':
-      return new JavaScriptPactGenerator();
-    default:
-      throw new Error(`Language ${language} is not yet supported`);
-  }
-}
 
 // Export supported languages and frameworks for UI
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['javascript'];
-export const SUPPORTED_FRAMEWORKS: Record<SupportedLanguage, TestFramework[]> = {
-  javascript: ['jest', 'mocha', 'jasmine'],
-  java: ['junit5'],
+export const SUPPORTED_FRAMEWORKS: Record<SupportedLanguage, string[]> = {
+  javascript: ['jest', 'mocha', 'jasmine', 'vitest'],
+  java: ['junit5', 'junit4', 'testng', 'spock'],
   csharp: ['nunit', 'xunit', 'mstest'],
-  python: ['pytest'],
-  go: ['testing']
+  python: ['pytest', 'unittest', 'nose2'],
+  go: ['testing', 'ginkgo', 'testify']
 };
 
-export const getFrameworksForLanguage = (language: SupportedLanguage): TestFramework[] => {
+export const getFrameworksForLanguage = (language: SupportedLanguage): string[] => {
   return SUPPORTED_FRAMEWORKS[language] || [];
 };
 
-export const getDefaultFrameworkForLanguage = (language: SupportedLanguage): TestFramework => {
+export const getDefaultFrameworkForLanguage = (language: SupportedLanguage): string => {
   const frameworks = getFrameworksForLanguage(language);
   return frameworks[0] || 'jest';
 };

@@ -703,17 +703,4 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
     }
     return 'nil';
   }
-
-  private toPascalCase(str: string): string {
-    return str.replace(/(?:^|[-_\s])(\w)/g, (_, char) => char.toUpperCase());
-  }
-
-  private toCamelCase(str: string): string {
-    const pascal = this.toPascalCase(str);
-    return pascal.charAt(0).toLowerCase() + pascal.slice(1);
-  }
-
-  private toSnakeCase(str: string): string {
-    return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).replace(/^_/, '').replace(/[-\s]/g, '_');
-  }
 }

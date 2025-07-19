@@ -598,12 +598,4 @@ disallow_untyped_defs = true
   private toPythonDict(obj: any): string {
     return JSON.stringify(obj, null, 4).replace(/"/g, "'");
   }
-
-  private toPascalCase(str: string): string {
-    return str.replace(/(?:^|[-_\s])(\w)/g, (_, char) => char.toUpperCase());
-  }
-
-  private toSnakeCase(str: string): string {
-    return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).replace(/^_/, '').replace(/[-\s]/g, '_');
-  }
 }
