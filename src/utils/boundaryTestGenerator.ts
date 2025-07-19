@@ -20,17 +20,20 @@ export class BoundaryTestGenerator {
       tests.push(...this.analyzeSchemaBoundaries(operation.requestBody.schema, 'requestBody'));
     }
 
+    // Analyze parameters (ensure it's an array)
+    const parameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+    
     // Analyze path parameters
-    operation.parameters?.forEach(param => {
-      if (param.schema) {
-        tests.push(...this.analyzeSchemaBoundaries(param.schema, `parameter.${param.name}`));
+    parameters.forEach(param => {
+      if (param && param.schema) {
+        tests.push(...this.analyzeSchemaBoundaries(param.schema, `parameter.${param.name || 'unknown'}`));
       }
     });
 
     // Analyze query parameters
-    operation.parameters?.forEach(param => {
-      if (param.in === 'query' && param.schema) {
-        tests.push(...this.analyzeSchemaBoundaries(param.schema, `query.${param.name}`));
+    parameters.forEach(param => {
+      if (param && param.in === 'query' && param.schema) {
+        tests.push(...this.analyzeSchemaBoundaries(param.schema, `query.${param.name || 'unknown'}`));
       }
     });
 

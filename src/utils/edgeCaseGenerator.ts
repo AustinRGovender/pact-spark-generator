@@ -20,10 +20,11 @@ export class EdgeCaseGenerator {
       tests.push(...this.analyzeSchemaEdgeCases(operation, operation.requestBody.schema, 'requestBody'));
     }
 
-    // Analyze parameters for edge cases
-    operation.parameters?.forEach(param => {
-      if (param.schema) {
-        tests.push(...this.analyzeSchemaEdgeCases(operation, param.schema, `parameter.${param.name}`));
+    // Analyze parameters for edge cases (ensure it's an array)
+    const parameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+    parameters.forEach(param => {
+      if (param && param.schema) {
+        tests.push(...this.analyzeSchemaEdgeCases(operation, param.schema, `parameter.${param.name || 'unknown'}`));
       }
     });
 
