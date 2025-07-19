@@ -1,239 +1,134 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FileUploader } from '../components/FileUploader';
-import { CodeViewer } from '../components/CodeViewer';
-import { FileEditor } from '../components/FileEditor';
-import { TestExecutor } from '../components/TestExecutor';
-import { TestModeToggle } from '../components/TestModeToggle';
-import { PrivacyBanner } from '../components/PrivacyBanner';
-import { ActionBar } from '../components/ActionBar';
+import { LanguageSelector } from "../components/LanguageSelector";
+import { CodePreview } from "../components/CodePreview";
 import { ShaderBackground } from '../components/ShaderBackground';
-import { Button } from '@/components/ui/button';
 import { parseSwaggerFile } from '../utils/swaggerParser';
-import { generatePactTests } from '../utils/pactGenerator';
-import { downloadZip } from '../utils/downloadUtils';
+import { TestGenerator } from "../utils/testGenerator";
+import { LanguageGeneratorFactory } from "../generators/LanguageGeneratorFactory";
+import { SupportedLanguage, TestFramework, PackageManager, GeneratedOutput } from "../types/languageTypes";
 import { useToast } from '../hooks/use-toast';
-import { Edit } from 'lucide-react';
-
-interface GeneratedTest {
-  filename: string;
-  content: string;
-  tag: string;
-  endpoint: string;
-  method: string;
-}
 
 const Index = () => {
-  const [generatedTests, setGeneratedTests] = useState<GeneratedTest[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedTest, setSelectedTest] = useState<GeneratedTest | null>(null);
-  const [editingTest, setEditingTest] = useState<GeneratedTest | null>(null);
+  const [spec, setSpec] = useState<any>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('javascript');
+  const [selectedFramework, setSelectedFramework] = useState<TestFramework>('jest');
+  const [selectedPackageManager, setSelectedPackageManager] = useState<PackageManager>('npm');
+  const [generatedOutput, setGeneratedOutput] = useState<GeneratedOutput | null>(null);
   const [isProviderMode, setIsProviderMode] = useState(false);
-  const [providerSpecFiles, setProviderSpecFiles] = useState<File[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = useCallback(async (files: File[]) => {
-    setIsGenerating(true);
+  const handleFilesUpload = async (files: File[]) => {
+    const file = files[0]; // Take the first file for now
+    if (!file) return;
     
     try {
-      const allTests: GeneratedTest[] = [];
+      setIsLoading(true);
+      const content = await file.text();
+      const parsedSpec = await parseSwaggerFile(content, file.name);
+      setSpec(parsedSpec);
       
-      for (const file of files) {
-        const content = await file.text();
-        const parsedSpec = await parseSwaggerFile(content, file.name);
-        const tests = generatePactTests(parsedSpec, isProviderMode);
-        allTests.push(...tests);
-      }
-      
-      setGeneratedTests(allTests);
-      if (allTests.length > 0) {
-        setSelectedTest(allTests[0]);
-      }
+      // Generate tests automatically
+      const testGenerator = new TestGenerator();
+      const testSuite = testGenerator.generateTestSuite(
+        parsedSpec,
+        selectedLanguage,
+        selectedFramework as any,
+        isProviderMode
+      );
+
+      const output = LanguageGeneratorFactory.generateTests(testSuite, {
+        language: selectedLanguage,
+        framework: selectedFramework,
+        packageManager: selectedPackageManager,
+        buildTool: undefined,
+        version: '1.0.0',
+        customSettings: {},
+        namingConvention: {
+          testClasses: 'PascalCase',
+          testMethods: 'camelCase',
+          variables: 'camelCase',
+          constants: 'UPPER_CASE'
+        },
+        codeStyle: {
+          indentation: 'spaces',
+          indentSize: 2,
+          maxLineLength: 100,
+          semicolons: true,
+          quotes: 'single'
+        }
+      });
+
+      setGeneratedOutput(output);
       
       toast({
-        title: "Tests Generated Successfully",
-        description: `Generated ${allTests.length} PactJS ${isProviderMode ? 'provider' : 'consumer'} test${allTests.length === 1 ? '' : 's'} from ${files.length} file${files.length === 1 ? '' : 's'}`,
+        title: "Success",
+        description: `Generated ${output.files.length} files for ${selectedLanguage}`,
       });
     } catch (error) {
       console.error('Error generating tests:', error);
       toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to parse OpenAPI specification",
+        title: "Error",
+        description: "Failed to generate tests from the uploaded file",
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
-    }
-  }, [toast, isProviderMode]);
-
-  const handleReset = useCallback(() => {
-    setGeneratedTests([]);
-    setSelectedTest(null);
-    setEditingTest(null);
-  }, []);
-
-  const handleDownloadZip = useCallback(async () => {
-    if (generatedTests.length > 0) {
-      await downloadZip(generatedTests, isProviderMode);
-      toast({
-        title: "Download Started",
-        description: `Your PactJS ${isProviderMode ? 'provider' : 'consumer'} test suite is being downloaded as a ZIP file`,
-      });
-    }
-  }, [generatedTests, toast, isProviderMode]);
-
-  const handleCopyAll = useCallback(() => {
-    const allContent = generatedTests.map(test => 
-      `// ${test.filename}\n${test.content}`
-    ).join('\n\n');
-    
-    navigator.clipboard.writeText(allContent);
-    toast({
-      title: "Copied to Clipboard",
-      description: "All generated tests have been copied to your clipboard",
-    });
-  }, [generatedTests, toast]);
-
-  const handleEditTest = (test: GeneratedTest) => {
-    setEditingTest(test);
-  };
-
-  const handleSaveTest = (updatedTest: GeneratedTest) => {
-    setGeneratedTests(prev => 
-      prev.map(test => 
-        test.filename === updatedTest.filename ? updatedTest : test
-      )
-    );
-    
-    if (selectedTest?.filename === updatedTest.filename) {
-      setSelectedTest(updatedTest);
-    }
-    
-    setEditingTest(null);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingTest(null);
-  };
-
-  const handleProviderSpecUpload = useCallback((files: File[]) => {
-    setProviderSpecFiles(files);
-  }, []);
-
-  const handleModeToggle = (providerMode: boolean) => {
-    setIsProviderMode(providerMode);
-    // Clear existing tests when switching modes
-    if (generatedTests.length > 0) {
-      setGeneratedTests([]);
-      setSelectedTest(null);
-      setEditingTest(null);
-      setProviderSpecFiles([]);
-      toast({
-        title: "Mode Changed",
-        description: `Switched to ${providerMode ? 'Provider' : 'Consumer'} mode. Please regenerate your tests.`,
-      });
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <ShaderBackground />
-      <PrivacyBanner />
-      
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 relative z-10">
-        {generatedTests.length === 0 ? (
-          <div className="min-h-[80vh] flex items-center justify-center">
-            <div className="space-y-6 text-center px-4">
-              <TestModeToggle 
-                isProviderMode={isProviderMode}
-                onToggle={handleModeToggle}
-              />
-              <FileUploader 
-                onFilesUpload={handleFileUpload} 
-                isLoading={isGenerating}
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex justify-center sm:justify-between items-center">
-              <TestModeToggle 
-                isProviderMode={isProviderMode}
-                onToggle={handleModeToggle}
-              />
-            </div>
-            
-            <ActionBar
-              testsCount={generatedTests.length}
-              onCopyAll={handleCopyAll}
-              onDownloadZip={handleDownloadZip}
-              onReset={handleReset}
-            />
-            
-            <TestExecutor 
-              tests={generatedTests}
-              isProviderMode={isProviderMode}
-              onProviderSpecUpload={handleProviderSpecUpload}
-            />
-            
-            <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 lg:gap-6">
-              <div className="order-2 lg:order-1 lg:col-span-1">
-                <div className="bg-white/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-white/20 shadow-xl p-4 sm:p-6">
-                  <h3 className="text-base sm:text-lg font-semibold text-slate-800 mb-3 sm:mb-4">
-                    Generated Tests ({generatedTests.length})
-                  </h3>
-                  <div className="space-y-2 max-h-64 sm:max-h-96 overflow-y-auto">
-                    {generatedTests.map((test, index) => (
-                      <div
-                        key={index}
-                        className={`p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-200 ${
-                          selectedTest === test
-                            ? 'bg-[#bbc7fe]/30 border border-[#bbc7fe]/50'
-                            : 'hover:bg-slate-100/50 border border-transparent'
-                        }`}
-                      >
-                        <button
-                          onClick={() => setSelectedTest(test)}
-                          className="w-full text-left mb-2"
-                        >
-                          <div className="font-medium text-slate-800 text-xs sm:text-sm truncate">
-                            {test.endpoint}
-                          </div>
-                          <div className="text-xs text-slate-600 flex gap-2">
-                            <span className="uppercase font-mono">{test.method}</span>
-                            <span>•</span>
-                            <span className="truncate">{test.tag}</span>
-                          </div>
-                        </button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEditTest(test)}
-                          className="w-full h-8 text-xs"
-                        >
-                          <Edit className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+      <div className="relative z-10 container mx-auto py-8 px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Advanced Pact Test Generator
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Generate comprehensive contract tests from OpenAPI specifications in multiple programming languages
+          </p>
+        </div>
 
-              <div className="order-1 lg:order-2 lg:col-span-3">
-                {editingTest ? (
-                  <FileEditor
-                    test={editingTest}
-                    onSave={handleSaveTest}
-                    onCancel={handleCancelEdit}
-                  />
-                ) : (
-                  selectedTest && <CodeViewer test={selectedTest} />
-                )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-6">
+            <FileUploader onFilesUpload={handleFilesUpload} isLoading={isLoading} />
+            
+            <LanguageSelector
+              selectedLanguage={selectedLanguage}
+              selectedFramework={selectedFramework}
+              selectedPackageManager={selectedPackageManager}
+              onLanguageChange={setSelectedLanguage}
+              onFrameworkChange={setSelectedFramework}
+              onPackageManagerChange={setSelectedPackageManager}
+            />
+
+            {/* Provider Mode Toggle */}
+            <div className="p-4 border rounded-lg bg-card">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="provider-mode"
+                  checked={isProviderMode}
+                  onChange={(e) => setIsProviderMode(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="provider-mode" className="text-sm font-medium">
+                  Provider Mode (Generate provider verification tests)
+                </label>
               </div>
             </div>
           </div>
-        )}
+
+          <div>
+            <CodePreview
+              generatedOutput={generatedOutput}
+              language={selectedLanguage}
+              isLoading={isLoading}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
