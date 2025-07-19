@@ -87,6 +87,17 @@ export class TemplateEngine {
     return this.processTemplate(template, context);
   }
 
+  static render(template: string, context: any): string {
+    return template.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
+      const value = this.getNestedValue(context, key.trim());
+      return value !== undefined ? String(value) : match;
+    });
+  }
+
+  private static getNestedValue(obj: any, path: string): any {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
+  }
+
   private processTemplate(template: string, context: TemplateContext): string {
     let result = template;
     
