@@ -52,7 +52,7 @@ export class TestGenerator {
 
     return {
       name: this.sanitizeName(spec.info.title),
-      description: spec.info.description || 'Generated Pact test suite',
+      description: 'Generated Pact test suite',
       provider: this.sanitizeName(spec.info.title),
       consumer: `${this.sanitizeName(spec.info.title)}Consumer`,
       tests: allTests,
@@ -156,21 +156,21 @@ export class TestGenerator {
     
     return boundaryTests.map((boundaryTest, index) => ({
       id: this.generateTestId(operation, `boundary_${index}`),
-      name: `${operation.method}_${this.sanitizePath(operation.path)}_boundary_${boundaryTest.type}`,
+      name: `${operation.method}_${this.sanitizePath(operation.path)}_boundary_${boundaryTest.category}`,
       description: boundaryTest.description,
       type: 'boundary' as TestCaseType,
       scenario: {
         given: 'boundary condition setup',
-        when: `a ${operation.method} request is made with ${boundaryTest.type} values`,
-        then: boundaryTest.expectedBehavior,
+        when: `a ${operation.method} request is made with ${boundaryTest.category} values`,
+        then: `should return ${boundaryTest.expected} result`,
         edgeCase: {
           type: 'boundary',
           description: boundaryTest.description,
-          expectedBehavior: boundaryTest.expectedBehavior
+          expectedBehavior: `should return ${boundaryTest.expected} result`
         }
       },
-      request: this.generateTestRequest(operation, { modifyBody: boundaryTest.testValue }),
-      response: this.generateTestResponse(operation, boundaryTest.expectedStatus),
+      request: this.generateTestRequest(operation, { modifyBody: boundaryTest.value }),
+      response: this.generateTestResponse(operation, boundaryTest.errorCode || 200),
       tags: [operation.tags?.[0] || 'default', 'boundary']
     }));
   }
@@ -180,20 +180,20 @@ export class TestGenerator {
     
     return edgeTests.map((edgeTest, index) => ({
       id: this.generateTestId(operation, `edge_${index}`),
-      name: `${operation.method}_${this.sanitizePath(operation.path)}_edge_${edgeTest.type}`,
+      name: `${operation.method}_${this.sanitizePath(operation.path)}_edge_${edgeTest.category}`,
       description: edgeTest.description,
       type: 'edge' as TestCaseType,
       scenario: {
         given: 'edge case condition',
-        when: `a ${operation.method} request is made with ${edgeTest.type} scenario`,
-        then: edgeTest.expectedBehavior,
+        when: `a ${operation.method} request is made with ${edgeTest.category} scenario`,
+        then: `should return ${edgeTest.expectedStatus} status`,
         edgeCase: {
-          type: edgeTest.type as any,
+          type: edgeTest.category as any,
           description: edgeTest.description,
-          expectedBehavior: edgeTest.expectedBehavior
+          expectedBehavior: `should return ${edgeTest.expectedStatus} status`
         }
       },
-      request: this.generateTestRequest(operation),
+      request: this.generateTestRequest(operation, { modifyBody: edgeTest.requestData }),
       response: this.generateTestResponse(operation, edgeTest.expectedStatus || 200),
       tags: [operation.tags?.[0] || 'default', 'edge']
     }));
@@ -204,15 +204,15 @@ export class TestGenerator {
     
     return performanceTests.map((perfTest, index) => ({
       id: this.generateTestId(operation, `performance_${index}`),
-      name: `${operation.method}_${this.sanitizePath(operation.path)}_perf_${perfTest.type}`,
+      name: `${operation.method}_${this.sanitizePath(operation.path)}_perf_${perfTest.category}`,
       description: perfTest.description,
       type: 'performance' as TestCaseType,
       scenario: {
         given: 'performance test setup',
-        when: `${perfTest.type} scenario is executed`,
+        when: `${perfTest.category} scenario is executed`,
         then: perfTest.expectedBehavior,
         edgeCase: {
-          type: perfTest.type as any,
+          type: perfTest.category as any,
           description: perfTest.description,
           expectedBehavior: perfTest.expectedBehavior
         }
