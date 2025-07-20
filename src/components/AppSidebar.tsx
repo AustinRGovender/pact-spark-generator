@@ -96,25 +96,25 @@ export function AppSidebar() {
                   <SidebarMenuButton 
                     asChild
                     className={`
-                      w-full rounded-lg transition-all duration-200
+                      w-full rounded-lg transition-all duration-200 min-h-[60px]
                       ${item.active 
                         ? 'bg-primary/10 text-primary border border-primary/20 shadow-colored' 
                         : 'hover:bg-secondary/50 hover:shadow-soft'
                       }
                     `}
                   >
-                    <a href={item.href} className="flex items-center space-x-3 p-3">
-                      <item.icon className={`h-5 w-5 flex-shrink-0 ${item.active ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <a href={item.href} className="flex items-start space-x-3 p-3">
+                      <item.icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${item.active ? 'text-primary' : 'text-muted-foreground'}`} />
                       {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{item.title}</div>
-                          <div className="text-xs text-muted-foreground truncate">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="font-medium text-sm leading-tight">{item.title}</div>
+                          <div className="text-xs text-muted-foreground leading-tight line-clamp-2">
                             {item.description}
                           </div>
                         </div>
                       )}
                       {item.active && !isCollapsed && (
-                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                        <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0 mt-1" />
                       )}
                     </a>
                   </SidebarMenuButton>
@@ -135,19 +135,19 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild
-                    className="w-full rounded-lg transition-all duration-200 hover:bg-secondary/50 hover:shadow-soft"
+                    className="w-full rounded-lg transition-all duration-200 hover:bg-secondary/50 hover:shadow-soft min-h-[60px]"
                   >
                     <a 
                       href={item.href} 
-                      className="flex items-center space-x-3 p-3"
+                      className="flex items-start space-x-3 p-3"
                       target={item.href.startsWith('http') ? '_blank' : undefined}
                       rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
                     >
-                      <item.icon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                      <item.icon className="h-5 w-5 flex-shrink-0 text-muted-foreground mt-0.5" />
                       {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{item.title}</div>
-                          <div className="text-xs text-muted-foreground truncate">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="font-medium text-sm leading-tight">{item.title}</div>
+                          <div className="text-xs text-muted-foreground leading-tight line-clamp-2">
                             {item.description}
                           </div>
                         </div>

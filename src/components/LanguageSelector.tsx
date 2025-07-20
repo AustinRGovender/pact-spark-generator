@@ -29,7 +29,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">Select Programming Language</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {Object.entries(LANGUAGE_METADATA).map(([key, metadata]) => {
             const language = key as SupportedLanguage;
             const isSelected = selectedLanguage === language;
@@ -37,32 +37,32 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
             return (
               <Card 
                 key={language}
-                className={`cursor-pointer transition-all hover:shadow-md ${
-                  isSelected ? 'ring-2 ring-primary' : ''
+                className={`cursor-pointer transition-all hover:shadow-md min-h-[120px] ${
+                  isSelected ? 'ring-2 ring-primary shadow-colored' : ''
                 }`}
                 onClick={() => onLanguageChange(language)}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-2xl">{metadata.icon}</span>
-                      <CardTitle className="text-lg">{metadata.displayName}</CardTitle>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl flex-shrink-0">{metadata.icon}</span>
+                      <CardTitle className="text-lg font-semibold">{metadata.displayName}</CardTitle>
                     </div>
-                    {isSelected && <Check className="h-5 w-5 text-primary" />}
+                    {isSelected && <Check className="h-5 w-5 text-primary flex-shrink-0" />}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-1">
-                    <Badge variant="secondary" className="text-xs">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="secondary" className="text-xs whitespace-nowrap">
                       {metadata.defaultFramework}
                     </Badge>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs whitespace-nowrap">
                       {metadata.defaultPackageManager}
                     </Badge>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Features:</div>
+                    <div className="text-sm text-muted-foreground font-medium">Features:</div>
                     <div className="flex flex-wrap gap-1">
                       {metadata.features.supportsAsync && (
                         <Badge variant="outline" className="text-xs">Async</Badge>
@@ -82,14 +82,14 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full p-0 h-auto text-xs text-primary hover:text-primary-dark"
+                    className="w-full justify-start p-2 h-auto text-xs text-primary hover:text-primary-hover hover:bg-primary/5"
                     onClick={(e) => {
                       e.stopPropagation();
                       window.open(metadata.documentation, '_blank');
                     }}
                   >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Documentation
+                    <ExternalLink className="h-3 w-3 mr-2 flex-shrink-0" />
+                    <span className="truncate">Documentation</span>
                   </Button>
                 </CardContent>
               </Card>
@@ -109,16 +109,16 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                 value={selectedFramework} 
                 onValueChange={onFrameworkChange as (value: string) => void}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select test framework" />
                 </SelectTrigger>
                 <SelectContent>
                   {currentLanguageMetadata.supportedFrameworks.map((framework) => (
                     <SelectItem key={framework} value={framework}>
-                      <div className="flex items-center space-x-2">
-                        <span>{framework}</span>
+                      <div className="flex items-center space-x-2 w-full">
+                        <span className="flex-1 truncate">{framework}</span>
                         {framework === currentLanguageMetadata.defaultFramework && (
-                          <Badge variant="secondary" className="text-xs">Default</Badge>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">Default</Badge>
                         )}
                       </div>
                     </SelectItem>
@@ -133,16 +133,16 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                 value={selectedPackageManager} 
                 onValueChange={onPackageManagerChange as (value: string) => void}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select package manager" />
                 </SelectTrigger>
                 <SelectContent>
                   {currentLanguageMetadata.supportedPackageManagers.map((packageManager) => (
                     <SelectItem key={packageManager} value={packageManager}>
-                      <div className="flex items-center space-x-2">
-                        <span>{packageManager}</span>
+                      <div className="flex items-center space-x-2 w-full">
+                        <span className="flex-1 truncate">{packageManager}</span>
                         {packageManager === currentLanguageMetadata.defaultPackageManager && (
-                          <Badge variant="secondary" className="text-xs">Default</Badge>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">Default</Badge>
                         )}
                       </div>
                     </SelectItem>
@@ -156,21 +156,25 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
             <CardHeader>
               <CardTitle className="text-base">Language Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">File Extension:</span>
-                  <span className="ml-2 font-mono">{currentLanguageMetadata.fileExtension}</span>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1">
+                  <span className="font-medium text-muted-foreground">File Extension:</span>
+                  <span className="font-mono bg-muted px-2 py-1 rounded text-sm">
+                    {currentLanguageMetadata.fileExtension}
+                  </span>
                 </div>
-                <div>
-                  <span className="font-medium">Default Framework:</span>
-                  <span className="ml-2">{currentLanguageMetadata.defaultFramework}</span>
+                <div className="space-y-1">
+                  <span className="font-medium text-muted-foreground">Default Framework:</span>
+                  <span className="bg-muted px-2 py-1 rounded text-sm">
+                    {currentLanguageMetadata.defaultFramework}
+                  </span>
                 </div>
               </div>
               
-              <div>
-                <span className="font-medium text-sm">Supported Frameworks:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
+              <div className="space-y-2">
+                <span className="font-medium text-sm text-muted-foreground">Supported Frameworks:</span>
+                <div className="flex flex-wrap gap-2">
                   {currentLanguageMetadata.supportedFrameworks.map((framework) => (
                     <Badge key={framework} variant="outline" className="text-xs">
                       {framework}
@@ -179,9 +183,9 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                 </div>
               </div>
 
-              <div>
-                <span className="font-medium text-sm">Package Managers:</span>
-                <div className="flex flex-wrap gap-1 mt-1">
+              <div className="space-y-2">
+                <span className="font-medium text-sm text-muted-foreground">Package Managers:</span>
+                <div className="flex flex-wrap gap-2">
                   {currentLanguageMetadata.supportedPackageManagers.map((pm) => (
                     <Badge key={pm} variant="outline" className="text-xs">
                       {pm}
