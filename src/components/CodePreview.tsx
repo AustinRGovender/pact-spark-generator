@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Copy, Download, Eye, Code } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Copy, Download, Eye, Code, Maximize2, Minimize2 } from 'lucide-react';
 import { SyntaxHighlighter } from './SyntaxHighlighter';
 import { GeneratedOutput, GeneratedFile, SupportedLanguage } from '../types/languageTypes';
 import { useToast } from './ui/use-toast';
@@ -21,6 +22,7 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
+  const [isMaximized, setIsMaximized] = useState(false);
   const { toast } = useToast();
 
   if (isLoading) {
@@ -113,165 +115,224 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
     return acc;
   }, {} as Record<string, GeneratedFile[]>);
 
-  return (
-    <Card className="h-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Generated Code Preview</CardTitle>
-            <CardDescription>
-              {generatedOutput.files.length} files generated for {language}
-            </CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={viewMode === 'preview' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('preview')}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
-            </Button>
-            <Button
-              variant={viewMode === 'raw' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('raw')}
-            >
-              <Code className="h-4 w-4 mr-2" />
-              Raw
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Tabs defaultValue="files" className="h-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="structure">Structure</TabsTrigger>
-            <TabsTrigger value="setup">Setup</TabsTrigger>
-          </TabsList>
+  const CodePreviewContent = ({ isMaximized }: { isMaximized: boolean }) => (
+    <Tabs defaultValue="files" className="h-full">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="files">Files</TabsTrigger>
+        <TabsTrigger value="structure">Structure</TabsTrigger>
+        <TabsTrigger value="setup">Setup</TabsTrigger>
+      </TabsList>
 
-          <TabsContent value="files" className="space-y-4 p-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-96">
-              {/* File browser */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Files by Type</h4>
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {Object.entries(groupedFiles).map(([type, files]) => (
-                    <div key={type} className="space-y-1">
-                      <h5 className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
-                        {type} ({files.length})
-                      </h5>
-                      {files.map((file) => (
-                        <button
-                          key={file.path}
-                          className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors ${
-                            selectedFile === file.path ? 'bg-primary/10 border border-primary/20' : ''
-                          }`}
-                          onClick={() => setSelectedFile(file.path)}
-                        >
-                          <div className="font-mono text-xs truncate">{file.path}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{file.description}</div>
-                        </button>
-                      ))}
-                    </div>
+      <TabsContent value="files" className="space-y-4 p-4">
+        <div className={`grid gap-4 ${isMaximized ? 'grid-cols-1 xl:grid-cols-4 h-[70vh]' : 'grid-cols-1 lg:grid-cols-3 h-96'}`}>
+          {/* File browser */}
+          <div className={`space-y-2 ${isMaximized ? 'xl:col-span-1' : ''}`}>
+            <h4 className="font-medium text-sm">Files by Type</h4>
+            <div className={`space-y-3 overflow-y-auto ${isMaximized ? 'max-h-[65vh]' : 'max-h-80'}`}>
+              {Object.entries(groupedFiles).map(([type, files]) => (
+                <div key={type} className="space-y-1">
+                  <h5 className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
+                    {type} ({files.length})
+                  </h5>
+                  {files.map((file) => (
+                    <button
+                      key={file.path}
+                      className={`w-full text-left p-2 rounded text-sm hover:bg-muted transition-colors ${
+                        selectedFile === file.path ? 'bg-primary/10 border border-primary/20' : ''
+                      }`}
+                      onClick={() => setSelectedFile(file.path)}
+                    >
+                      <div className="font-mono text-xs truncate">{file.path}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{file.description}</div>
+                    </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Code display */}
-              <div className="lg:col-span-2 space-y-2">
-                {currentFile && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-medium font-mono text-sm">{currentFile.path}</h4>
-                        <Badge variant="secondary" className="text-xs">
-                          {currentFile.type}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopyToClipboard(currentFile.content)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDownloadFile(currentFile)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-                      {viewMode === 'preview' ? (
-                        <SyntaxHighlighter
-                          code={currentFile.content}
-                          language={getLanguageFromExtension(currentFile.path)}
-                        />
-                      ) : (
-                        <pre className="p-4 text-xs font-mono bg-muted text-muted-foreground whitespace-pre-wrap">
-                          {currentFile.content}
-                        </pre>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+              ))}
             </div>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="structure" className="space-y-4 p-4">
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Project Structure</h4>
-                <div className="space-y-2 font-mono text-sm">
-                  <div><strong>Root:</strong> {generatedOutput.projectStructure.rootDir}</div>
-                  <div><strong>Tests:</strong> {generatedOutput.projectStructure.testDir}</div>
-                  <div><strong>Package File:</strong> {generatedOutput.projectStructure.packageFile}</div>
-                  {generatedOutput.projectStructure.buildFile && (
-                    <div><strong>Build File:</strong> {generatedOutput.projectStructure.buildFile}</div>
+          {/* Code display */}
+          <div className={`space-y-2 ${isMaximized ? 'xl:col-span-3' : 'lg:col-span-2'}`}>
+            {currentFile && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <h4 className="font-medium font-mono text-sm">{currentFile.path}</h4>
+                    <Badge variant="secondary" className="text-xs">
+                      {currentFile.type}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyToClipboard(currentFile.content)}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownloadFile(currentFile)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className={`border rounded-lg overflow-hidden overflow-y-auto ${isMaximized ? 'max-h-[60vh]' : 'max-h-64'}`}>
+                  {viewMode === 'preview' ? (
+                    <SyntaxHighlighter
+                      code={currentFile.content}
+                      language={getLanguageFromExtension(currentFile.path)}
+                    />
+                  ) : (
+                    <pre className="p-4 text-xs font-mono bg-muted text-muted-foreground whitespace-pre-wrap">
+                      {currentFile.content}
+                    </pre>
                   )}
                 </div>
-              </div>
+              </>
+            )}
+          </div>
+        </div>
+      </TabsContent>
 
-              <div>
-                <h4 className="font-medium mb-2">Dependencies</h4>
-                <div className="space-y-1">
-                  {generatedOutput.dependencies.map((dep, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 border rounded">
-                      <div>
-                        <div className="font-mono text-sm">{dep.name}</div>
-                        <div className="text-xs text-muted-foreground">{dep.description}</div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className="text-xs">{dep.version}</Badge>
-                        <Badge variant="secondary" className="text-xs">{dep.scope}</Badge>
-                      </div>
-                    </div>
-                  ))}
+      <TabsContent value="structure" className="space-y-4 p-4">
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-medium mb-2">Project Structure</h4>
+            <div className="space-y-2 font-mono text-sm">
+              <div><strong>Root:</strong> {generatedOutput.projectStructure.rootDir}</div>
+              <div><strong>Tests:</strong> {generatedOutput.projectStructure.testDir}</div>
+              <div><strong>Package File:</strong> {generatedOutput.projectStructure.packageFile}</div>
+              {generatedOutput.projectStructure.buildFile && (
+                <div><strong>Build File:</strong> {generatedOutput.projectStructure.buildFile}</div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Dependencies</h4>
+            <div className="space-y-1">
+              {generatedOutput.dependencies.map((dep, index) => (
+                <div key={index} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <div className="font-mono text-sm">{dep.name}</div>
+                    <div className="text-xs text-muted-foreground">{dep.description}</div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="outline" className="text-xs">{dep.version}</Badge>
+                    <Badge variant="secondary" className="text-xs">{dep.scope}</Badge>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </TabsContent>
+          </div>
+        </div>
+      </TabsContent>
 
-          <TabsContent value="setup" className="space-y-4 p-4">
+      <TabsContent value="setup" className="space-y-4 p-4">
+        <div>
+          <h4 className="font-medium mb-2">Setup Instructions</h4>
+          <div className="prose prose-sm max-w-none">
+            <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-lg">
+              {generatedOutput.setupInstructions.join('\n')}
+            </pre>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+
+  return (
+    <>
+      <Card className="h-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium mb-2">Setup Instructions</h4>
-              <div className="prose prose-sm max-w-none">
-                <pre className="whitespace-pre-wrap text-sm bg-muted p-4 rounded-lg">
-                  {generatedOutput.setupInstructions.join('\n')}
-                </pre>
+              <CardTitle>Generated Code Preview</CardTitle>
+              <CardDescription>
+                {generatedOutput.files.length} files generated for {language}
+              </CardDescription>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={viewMode === 'preview' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('preview')}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+              <Button
+                variant={viewMode === 'raw' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setViewMode('raw')}
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Raw
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsMaximized(true)}
+              >
+                <Maximize2 className="h-4 w-4 mr-2" />
+                Maximize
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0 h-full">
+          <CodePreviewContent isMaximized={false} />
+        </CardContent>
+      </Card>
+
+      {/* Maximized Dialog */}
+      <Dialog open={isMaximized} onOpenChange={setIsMaximized}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0">
+          <DialogHeader className="p-6 pb-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>Generated Code Preview - Maximized</DialogTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {generatedOutput.files.length} files generated for {language}
+                </p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={viewMode === 'preview' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('preview')}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Button>
+                <Button
+                  variant={viewMode === 'raw' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setViewMode('raw')}
+                >
+                  <Code className="h-4 w-4 mr-2" />
+                  Raw
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsMaximized(false)}
+                >
+                  <Minimize2 className="h-4 w-4 mr-2" />
+                  Minimize
+                </Button>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden p-6 pt-0">
+            <CodePreviewContent isMaximized={true} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
