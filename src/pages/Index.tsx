@@ -23,7 +23,9 @@ import {
   FileCheck,
   Settings,
   TrendingUp,
-  Clock
+  Clock,
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 
 const Index = () => {
@@ -93,6 +95,21 @@ const Index = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    setSpec(null);
+    setGeneratedOutput(null);
+    setSelectedLanguage('javascript');
+    setSelectedFramework('jest');
+    setSelectedPackageManager('npm');
+    setIsProviderMode(false);
+    setIsLoading(false);
+    
+    toast({
+      title: "Reset Complete",
+      description: "All settings and generated code have been cleared",
+    });
   };
 
   return (
@@ -194,10 +211,22 @@ const Index = () => {
               {/* Advanced Settings */}
               <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Settings className="h-4 w-4" />
+                      <CardTitle>Settings</CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleReset}
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      disabled={isLoading}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Reset
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
@@ -241,11 +270,23 @@ const Index = () => {
                         Preview and download your contract tests
                       </CardDescription>
                     </div>
-                    {generatedOutput && (
-                      <Badge variant="secondary" className="animate-pulse">
-                        {generatedOutput.files.length} files generated
-                      </Badge>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {generatedOutput && (
+                        <>
+                          <Badge variant="secondary" className="animate-pulse">
+                            {generatedOutput.files.length} files generated
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleReset}
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0 h-full">
