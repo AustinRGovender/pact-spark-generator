@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodePreview } from "../components/CodePreview";
-
+import { LoadingOverlay } from '../components/LoadingOverlay';
+import { GenerationProgress } from '../components/GenerationProgress';
 import { Layout } from '../components/Layout';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { EnhancedSettingsCard } from '../components/EnhancedSettingsCard';
@@ -17,7 +18,9 @@ import {
   FileCheck,
   TrendingUp,
   Clock,
-  Trash2
+  Trash2,
+  FileText,
+  Settings
 } from 'lucide-react';
 
 const Index = () => {
@@ -29,11 +32,46 @@ const Index = () => {
     isLoading,
     settings,
     hasSettingsChanged,
+    generationStatus,
+    estimatedTime,
     handleFileUpload,
     regenerateCode,
     updateSettings,
     reset,
+    cancelGeneration,
   } = useCodeGeneration({ autoRegenerate });
+
+  // Create loading steps for the overlay
+  const loadingSteps = [
+    {
+      id: 'parsing',
+      label: 'Parse OpenAPI Specification',
+      icon: <FileText className="h-4 w-4" />,
+      completed: generationStatus.stage === 'complete' || ['analyzing', 'generating', 'formatting'].includes(generationStatus.stage),
+      active: generationStatus.stage === 'parsing'
+    },
+    {
+      id: 'analyzing',
+      label: 'Analyze API Structure',
+      icon: <Settings className="h-4 w-4" />,
+      completed: generationStatus.stage === 'complete' || ['generating', 'formatting'].includes(generationStatus.stage),
+      active: generationStatus.stage === 'analyzing'
+    },
+    {
+      id: 'generating',
+      label: 'Generate Test Cases',
+      icon: <Code2 className="h-4 w-4" />,
+      completed: generationStatus.stage === 'complete' || generationStatus.stage === 'formatting',
+      active: generationStatus.stage === 'generating'
+    },
+    {
+      id: 'formatting',
+      label: 'Format Code Output',
+      icon: <FileCheck className="h-4 w-4" />,
+      completed: generationStatus.stage === 'complete',
+      active: generationStatus.stage === 'formatting'
+    }
+  ];
 
   return (
     <ThemeProvider defaultTheme="system">
@@ -76,6 +114,11 @@ const Index = () => {
               ))}
             </div>
           </div>
+
+          {/* Generation Progress */}
+          {generationStatus.stage !== 'idle' && (
+            <GenerationProgress status={generationStatus} />
+          )}
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -199,6 +242,17 @@ const Index = () => {
             </div>
           </div>
         </div>
+
+        {/* Loading Overlay */}
+        <LoadingOverlay
+          isVisible={isLoading}
+          progress={generationStatus.progress}
+          currentStep={generationStatus.currentStep}
+          steps={loadingSteps}
+          onCancel={cancelGeneration}
+          estimatedTime={estimatedTime}
+          canCancel={generationStatus.stage !== 'complete'}
+        />
       </Layout>
     </ThemeProvider>
   );
