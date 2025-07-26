@@ -57,10 +57,14 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
   }
 
   private generateConsumerTest(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
-    const template = `const { Pact } = require('@pact-foundation/pact');
+    const template = `const { Pact, Matchers } = require('@pact-foundation/pact');
 const path = require('path');
+const axios = require('axios');
 
-describe('{{consumerName}} - Consumer Test', () => {
+// Import your consumer code here
+// const { apiClient } = require('../src/api-client');
+
+describe('{{consumerName}} - Consumer Pact Tests', () => {
   const provider = new Pact({
     consumer: '{{consumerName}}',
     provider: '{{providerName}}',
@@ -72,35 +76,65 @@ describe('{{consumerName}} - Consumer Test', () => {
   afterEach(() => provider.verify());
   afterAll(() => provider.finalize());
 
+{{#each endpointGroups}}
+  describe('{{endpoint}} endpoint', () => {
 {{#each tests}}
-  describe('{{name}}', () => {
-    it('{{description}}', async () => {
-      await provider
-        .given('{{scenario.given}}')
-        .uponReceiving('{{description}}')
-        .withRequest({
-          method: '{{request.method}}',
-          path: '{{request.path}}'{{#if request.body}},
-          body: {{json request.body}}{{/if}}{{#if request.headers}},
-          headers: {{json request.headers}}{{/if}}
-        })
-        .willRespondWith({
-          status: {{response.status}},
-          headers: {{json response.headers}},
-          body: {{json response.body}}
+    describe('{{method}} {{../endpoint}}', () => {
+      it('{{description}}', async () => {
+        // Arrange - Set up the interaction
+        await provider
+          .given('{{providerState}}')
+          .uponReceiving('{{description}}')
+          .withRequest({
+            method: '{{method}}',
+            path: '{{path}}'{{#if query}},
+            query: {{json query}}{{/if}}{{#if headers}},
+            headers: {
+              'Content-Type': 'application/json',
+              {{#each headers}}
+              '{{@key}}': '{{this}}'{{#unless @last}},{{/unless}}
+              {{/each}}
+            }{{else}},
+            headers: {
+              'Content-Type': 'application/json'
+            }{{/if}}{{#if body}},
+            body: {{pactMatchers body}}{{/if}}
+          })
+          .willRespondWith({
+            status: {{status}},
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: {{pactMatchers responseBody}}
+          });
+
+        // Act - Call your consumer code here
+        const response = await axios({
+          method: '{{method}}',
+          url: \`\${provider.mockService.baseUrl}{{path}}\`{{#if body}},
+          data: {{json body}}{{/if}}{{#if headers}},
+          headers: {{json headers}}{{/if}}
         });
 
-      // Add your consumer code here
+        // Assert - Verify the response
+        expect(response.status).toBe({{status}});
+        expect(response.data).toMatchObject({{json responseBody}});
+      });
     });
+{{/each}}
   });
 {{/each}}
 });`;
 
+    // Group tests by endpoint for better organization
+    const endpointGroups = this.groupTestsByEndpoint(testSuite.tests);
+    
     const content = this.renderTemplate(template, {
       consumerName: testSuite.consumer,
       providerName: testSuite.provider,
-      tests: testSuite.tests,
-      json: (obj: any) => JSON.stringify(obj, null, 2)
+      endpointGroups,
+      json: (obj: any) => JSON.stringify(obj, null, 2),
+      pactMatchers: (obj: any) => this.generatePactMatchers(obj)
     });
 
     return {
@@ -115,23 +149,65 @@ describe('{{consumerName}} - Consumer Test', () => {
   private generateProviderTest(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
     const template = `const { Verifier } = require('@pact-foundation/pact');
 const path = require('path');
+const express = require('express');
+
+// Import your provider app
+// const { createApp } = require('../src/app');
 
 describe('{{providerName}} - Provider Verification', () => {
-  it('should validate the expectations of {{consumerName}}', () => {
+  let server;
+  let app;
+  const PORT = process.env.PORT || 3000;
+  const PROVIDER_BASE_URL = process.env.PROVIDER_BASE_URL || \`http://localhost:\${PORT}\`;
+
+  beforeAll(async () => {
+    // Set up your Express app
+    app = express();
+    app.use(express.json());
+    
+    // Add your API routes here
+    // app.use('/api', require('../src/routes'));
+    
+    // Start the server
+    server = app.listen(PORT, () => {
+      console.log(\`Provider server running on port \${PORT}\`);
+    });
+  });
+
+  afterAll(async () => {
+    if (server) {
+      await new Promise(resolve => server.close(resolve));
+    }
+  });
+
+  it('should validate the expectations of {{consumerName}}', async () => {
     const opts = {
       provider: '{{providerName}}',
-      providerBaseUrl: process.env.PROVIDER_BASE_URL || 'http://localhost:3000',
+      providerBaseUrl: PROVIDER_BASE_URL,
       pactUrls: [
         path.resolve(process.cwd(), 'pacts', '{{kebabCase consumerName}}-{{kebabCase providerName}}.json')
       ],
       stateHandlers: {
 {{#each providerStates}}
-        '{{this}}': () => {
-          console.log('Setting up state: {{this}}');
-          return Promise.resolve('State setup complete');
+        '{{this}}': async () => {
+          console.log('Setting up provider state: {{this}}');
+          // Add your state setup logic here
+          // Example: await setupTestData();
+          return Promise.resolve('Provider state "{{this}}" has been set up');
         },
 {{/each}}
-      }
+        // Default state handler for states without specific implementation
+        default: async () => {
+          console.log('Default state handler - no specific setup required');
+          return Promise.resolve('Default state configured');
+        }
+      },
+      // Enable verbose logging for debugging
+      logLevel: 'debug',
+      // Optional: Publish verification results to Pact Broker
+      // publishVerificationResult: process.env.CI === 'true',
+      // providerVersion: process.env.GIT_COMMIT || '1.0.0',
+      // enablePending: true
     };
 
     return new Verifier(opts).verifyProvider();
@@ -219,6 +295,28 @@ describe('{{providerName}} - Provider Verification', () => {
       }
     ];
 
+    // Add HTTP client for consumer tests
+    if (!isProviderMode) {
+      dependencies.push({
+        name: 'axios',
+        version: '^1.6.0',
+        scope: 'development',
+        manager: config.packageManager,
+        description: 'HTTP client for testing API calls'
+      });
+    }
+
+    // Add Express for provider tests
+    if (isProviderMode) {
+      dependencies.push({
+        name: 'express',
+        version: '^4.18.0',
+        scope: 'development',
+        manager: config.packageManager,
+        description: 'Express server for provider testing'
+      });
+    }
+
     switch (config.framework) {
       case 'jest':
         dependencies.push({
@@ -236,6 +334,13 @@ describe('{{providerName}} - Provider Verification', () => {
           scope: 'development',
           manager: config.packageManager,
           description: 'Mocha testing framework'
+        },
+        {
+          name: 'chai',
+          version: '^4.3.0',
+          scope: 'development',
+          manager: config.packageManager,
+          description: 'Assertion library for Mocha'
         });
         break;
       case 'jasmine':
@@ -404,5 +509,68 @@ describe('{{providerName}} - Provider Verification', () => {
 
   private sanitizeName(name: string): string {
     return name.replace(/[^a-zA-Z0-9]/g, '');
+  }
+
+  private groupTestsByEndpoint(tests: TestCase[]): Array<{endpoint: string, tests: TestCase[]}> {
+    const grouped = tests.reduce((acc, test) => {
+      const endpoint = test.request.path.split('?')[0]; // Remove query params for grouping
+      if (!acc[endpoint]) {
+        acc[endpoint] = [];
+      }
+      acc[endpoint].push({
+        ...test,
+        method: test.request.method,
+        path: test.request.path,
+        query: test.request.queryParams,
+        headers: test.request.headers,
+        body: test.request.body,
+        status: test.response.status,
+        responseBody: test.response.body,
+        providerState: test.providerState || 'default state'
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return Object.entries(grouped).map(([endpoint, tests]) => ({
+      endpoint,
+      tests
+    }));
+  }
+
+  private generatePactMatchers(obj: any): string {
+    if (!obj) return 'undefined';
+    
+    const generateMatchers = (value: any): any => {
+      if (typeof value === 'string') {
+        return `Matchers.like('${value}')`;
+      }
+      if (typeof value === 'number') {
+        return `Matchers.like(${value})`;
+      }
+      if (typeof value === 'boolean') {
+        return `Matchers.like(${value})`;
+      }
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          return `Matchers.eachLike(${generateMatchers(value[0])})`;
+        }
+        return `Matchers.eachLike({})`;
+      }
+      if (typeof value === 'object' && value !== null) {
+        const matchedObj: any = {};
+        for (const [key, val] of Object.entries(value)) {
+          matchedObj[key] = generateMatchers(val);
+        }
+        return JSON.stringify(matchedObj, null, 2).replace(/"/g, '');
+      }
+      return JSON.stringify(value);
+    };
+
+    try {
+      const result = generateMatchers(obj);
+      return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+    } catch (error) {
+      return JSON.stringify(obj, null, 2);
+    }
   }
 }
