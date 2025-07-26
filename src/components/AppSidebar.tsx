@@ -88,14 +88,14 @@ export function AppSidebar() {
                     asChild
                     className={`
                       w-full rounded-lg transition-all duration-200 min-h-[60px]
-                      ${item.active 
+                      ${isActive(item.href) 
                         ? 'bg-primary/10 text-primary border border-primary/20 shadow-colored' 
                         : 'hover:bg-secondary/50 hover:shadow-soft'
                       }
                     `}
                   >
-                    <a href={item.href} className="flex items-start space-x-3 p-3">
-                      <item.icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${item.active ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <NavLink to={item.href} className="flex items-start space-x-3 p-3">
+                      <item.icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${isActive(item.href) ? 'text-primary' : 'text-muted-foreground'}`} />
                       {!isCollapsed && (
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="font-medium text-sm leading-tight">{item.title}</div>
@@ -104,10 +104,10 @@ export function AppSidebar() {
                           </div>
                         </div>
                       )}
-                      {item.active && !isCollapsed && (
+                      {isActive(item.href) && !isCollapsed && (
                         <div className="w-2 h-2 rounded-full bg-primary animate-pulse flex-shrink-0 mt-1" />
                       )}
-                    </a>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
