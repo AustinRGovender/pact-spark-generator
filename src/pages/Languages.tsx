@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { SyntaxHighlighter } from '@/components/SyntaxHighlighter';
 import { LANGUAGE_METADATA, SupportedLanguage, LanguageFeatures } from '@/types/languageTypes';
 import { LanguageGeneratorFactory } from '@/generators/LanguageGeneratorFactory';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { Layout } from '@/components/Layout';
 
 const Languages = () => {
   const navigate = useNavigate();
@@ -200,23 +202,11 @@ func TestProductAPI(t *testing.T) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto px-6 py-8">
-        {/* Back Button */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back to Generator</span>
-          </Button>
-        </div>
-
+    <ThemeProvider>
+      <Layout>
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
+          <h1 className="text-4xl font-bold gradient-text mb-4">
             Supported Languages & Frameworks
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -246,7 +236,7 @@ func TestProductAPI(t *testing.T) {
             return (
               <Card 
                 key={key} 
-                className="glass-panel hover:shadow-colored transition-all duration-300 cursor-pointer"
+                className="glass-card shadow-medium hover-lift transition-all duration-300 cursor-pointer"
                 onClick={() => setSelectedLanguage(languageKey)}
               >
                 <CardHeader className="pb-4">
@@ -335,7 +325,7 @@ func TestProductAPI(t *testing.T) {
         </div>
 
         {/* Feature Comparison Matrix */}
-        <Card className="glass-panel mb-12">
+        <Card className="glass-card shadow-large mb-12">
           <CardHeader>
             <CardTitle>Feature Comparison Matrix</CardTitle>
             <CardDescription>
@@ -392,7 +382,7 @@ func TestProductAPI(t *testing.T) {
         </Card>
 
         {/* Code Examples */}
-        <Card className="glass-panel">
+        <Card className="glass-card shadow-large">
           <CardHeader>
             <CardTitle>Code Examples</CardTitle>
             <CardDescription>
@@ -435,22 +425,20 @@ func TestProductAPI(t *testing.T) {
 
         {/* Get Started CTA */}
         <div className="text-center mt-12">
-          <Card className="glass-panel inline-block">
+          <Card className="glass-card shadow-large inline-block">
             <CardContent className="p-8">
               <h3 className="text-2xl font-bold mb-4">Ready to Generate Tests?</h3>
               <p className="text-muted-foreground mb-6">
                 Choose your preferred language and start generating contract tests from your OpenAPI specifications.
               </p>
-              <Button size="lg" asChild>
-                <a href="/">
-                  Start Generating <ArrowRight className="ml-2 h-5 w-5" />
-                </a>
+              <Button size="lg" onClick={() => navigate('/')}>
+                Start Generating <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </CardContent>
           </Card>
         </div>
-      </div>
-    </div>
+      </Layout>
+    </ThemeProvider>
   );
 };
 
