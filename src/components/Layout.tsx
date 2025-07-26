@@ -28,9 +28,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <h1 className="text-lg font-bold gradient-text">
                     Advanced Pact Generator
                   </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Multi-language contract testing
-                  </p>
                 </div>
               </div>
             </div>
