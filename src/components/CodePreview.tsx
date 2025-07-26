@@ -128,7 +128,7 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
           {/* File browser */}
           <div className={`space-y-2 ${isMaximized ? 'xl:col-span-1' : ''}`}>
             <h4 className="font-medium text-sm">Files by Type</h4>
-            <div className={`space-y-3 overflow-y-auto ${isMaximized ? 'max-h-[65vh]' : 'max-h-80'}`}>
+            <div className={`space-y-3 overflow-y-auto scroll-container-mobile ${isMaximized ? 'max-h-[65vh]' : 'max-h-80'}`}>
               {Object.entries(groupedFiles).map(([type, files]) => (
                 <div key={type} className="space-y-1">
                   <h5 className="font-medium text-xs uppercase tracking-wide text-muted-foreground">
@@ -180,7 +180,7 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
                   </div>
                 </div>
 
-                <div className={`border rounded-lg overflow-hidden overflow-y-auto ${isMaximized ? 'max-h-[60vh]' : 'max-h-64'}`}>
+                <div className={`border rounded-lg overflow-hidden overflow-y-auto scroll-container-mobile ${isMaximized ? 'max-h-[60vh]' : 'max-h-64'}`}>
                   {viewMode === 'preview' ? (
                     <SyntaxHighlighter
                       code={currentFile.content}

@@ -35,11 +35,11 @@ export const TestResultsView: React.FC<TestResultsViewProps> = ({ results }) => 
   };
 
   return (
-    <div className="space-y-2 max-h-96 overflow-y-auto">
+    <div className="space-y-2 max-h-96 overflow-y-auto mobile-scroll-container mobile-scroll-list">
       {results.map((result, index) => (
         <div 
           key={index}
-          className={`border rounded-lg p-3 transition-colors ${getStatusBg(result.status)}`}
+          className={`border rounded-lg p-3 transition-colors mobile-scroll-item ${getStatusBg(result.status)}`}
         >
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">

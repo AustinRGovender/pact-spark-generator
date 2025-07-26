@@ -182,6 +182,14 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+
+  /* Mobile scroll optimizations */
+  @media (max-width: 768px) {
+    body {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+  }
 }
 
 /* Modern Utility Classes */
@@ -399,5 +407,42 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+  }
+
+  /* Mobile scroll utilities */
+  .scroll-smooth-mobile {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    scroll-behavior: smooth;
+  }
+
+  .scroll-container-mobile {
+    will-change: scroll-position;
+    contain: layout style paint;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Mobile-specific scroll areas */
+  @media (max-width: 768px) {
+    .mobile-scroll-container {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      touch-action: pan-y;
+      scroll-behavior: smooth;
+      transform: translateZ(0); /* Force hardware acceleration */
+    }
+    
+    .mobile-scroll-list {
+      will-change: scroll-position;
+      contain: layout style paint;
+      scroll-snap-type: y mandatory;
+    }
+    
+    .mobile-scroll-item {
+      scroll-snap-align: start;
+      scroll-snap-stop: normal;
+    }
   }
 }
