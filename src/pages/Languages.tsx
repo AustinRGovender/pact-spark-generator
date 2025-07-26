@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, CheckCircle, XCircle, ExternalLink, Copy, ArrowRight } from 'lucide-react';
+import { Search, CheckCircle, XCircle, ExternalLink, Copy, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { LANGUAGE_METADATA, SupportedLanguage, LanguageFeatures } from '@/types/
 import { LanguageGeneratorFactory } from '@/generators/LanguageGeneratorFactory';
 
 const Languages = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage | null>(null);
 
@@ -200,6 +202,18 @@ func TestProductAPI(t *testing.T) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-6 py-8">
+        {/* Back Button */}
+        <div className="mb-8">
+          <Button 
+            variant="ghost" 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">Back to Generator</span>
+          </Button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-4">
