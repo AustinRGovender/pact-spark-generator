@@ -3,7 +3,7 @@ import { SidebarProvider, SidebarTrigger } from './ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Button } from './ui/button';
 import { Moon, Sun, Sparkles } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from './ThemeProvider';
 
 interface LayoutProps {
   children: React.ReactNode;
