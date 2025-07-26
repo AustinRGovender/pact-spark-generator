@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileUploader } from '../components/FileUploader';
 import { CodePreview } from "../components/CodePreview";
-import { ShaderBackground } from '../components/ShaderBackground';
+
 import { Layout } from '../components/Layout';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { EnhancedSettingsCard } from '../components/EnhancedSettingsCard';
@@ -38,8 +38,7 @@ const Index = () => {
   return (
     <ThemeProvider defaultTheme="system">
       <Layout>
-        <ShaderBackground />
-        <div className="relative z-10 max-w-7xl mx-auto space-y-8">
+        <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero Section */}
           <div className="text-center space-y-6 py-12">
             <div className="space-y-4">
