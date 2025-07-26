@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Sidebar,
   SidebarContent,
@@ -24,29 +25,16 @@ import {
 
 const navigationItems = [
   { 
-    title: 'Dashboard', 
-    icon: Home, 
-    href: '#dashboard',
-    description: 'Overview & analytics'
-  },
-  { 
     title: 'Generator', 
     icon: Sparkles, 
-    href: '#generator',
-    description: 'Create contract tests',
-    active: true
+    href: '/',
+    description: 'Create contract tests'
   },
   { 
     title: 'Languages', 
     icon: Languages, 
     href: '/languages',
     description: 'Supported frameworks'
-  },
-  { 
-    title: 'History', 
-    icon: History, 
-    href: '#history',
-    description: 'Generated projects'
   },
 ];
 
@@ -79,7 +67,10 @@ const resourceItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const location = useLocation();
   const isCollapsed = state === 'collapsed';
+  
+  const isActive = (href: string) => location.pathname === href;
 
   return (
     <Sidebar className="border-r border-glass-border">
