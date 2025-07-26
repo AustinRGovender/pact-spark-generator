@@ -11,11 +11,14 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
   generateTestSuite(testSuite: TestSuite, config: LanguageConfig): GeneratedOutput {
     const files: GeneratedFile[] = [];
     
-    // Generate consumer tests
-    files.push(this.generateConsumerTest(testSuite, config));
-    
-    // Generate provider tests
-    files.push(this.generateProviderTest(testSuite, config));
+    // Generate tests based on mode
+    if (testSuite.isProviderMode) {
+      // Provider mode: only generate provider verification tests
+      files.push(this.generateProviderTest(testSuite, config));
+    } else {
+      // Consumer mode: only generate consumer tests
+      files.push(this.generateConsumerTest(testSuite, config));
+    }
     
     // Generate package.json
     files.push(this.generatePackageJsonFile(testSuite, config));
@@ -27,10 +30,10 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
 
     return {
       files,
-      projectStructure: this.generateProjectStructure(testSuite.name),
-      setupInstructions: this.generateSetupInstructions(config),
-      dependencies: this.generateDependencies(config),
-      configuration: this.generateProjectConfiguration(config)
+      projectStructure: this.generateProjectStructure(testSuite.name, testSuite.isProviderMode),
+      setupInstructions: this.generateSetupInstructions(config, testSuite.isProviderMode),
+      dependencies: this.generateDependencies(config, testSuite.isProviderMode),
+      configuration: this.generateProjectConfiguration(config, testSuite.isProviderMode)
     };
   }
 
@@ -154,16 +157,25 @@ describe('{{providerName}} - Provider Verification', () => {
   }
 
   private generatePackageJsonFile(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
+    const isProviderMode = testSuite.isProviderMode;
+    const testType = isProviderMode ? 'provider' : 'consumer';
+    
+    const scripts: Record<string, string> = {
+      test: config.framework === 'jest' ? 'jest' : config.framework
+    };
+    
+    if (isProviderMode) {
+      scripts["test:provider"] = `${config.framework} --testPathPattern=provider`;
+    } else {
+      scripts["test:consumer"] = `${config.framework} --testPathPattern=consumer`;
+    }
+    
     const packageJson = {
-      name: `${this.toKebabCase(testSuite.name)}-pact-tests`,
+      name: `${this.toKebabCase(testSuite.name)}-pact-${testType}-tests`,
       version: "1.0.0",
-      description: `Pact tests for ${testSuite.name}`,
-      scripts: {
-        test: config.framework === 'jest' ? 'jest' : config.framework,
-        "test:consumer": `${config.framework} --testPathPattern=consumer`,
-        "test:provider": `${config.framework} --testPathPattern=provider`
-      },
-      devDependencies: this.generateDependencies(config).reduce((deps, dep) => {
+      description: `Pact ${testType} tests for ${testSuite.name}`,
+      scripts,
+      devDependencies: this.generateDependencies(config, isProviderMode).reduce((deps, dep) => {
         deps[dep.name] = dep.version;
         return deps;
       }, {} as Record<string, string>)
@@ -196,7 +208,7 @@ describe('{{providerName}} - Provider Verification', () => {
     };
   }
 
-  private generateDependencies(config: LanguageConfig): Dependency[] {
+  private generateDependencies(config: LanguageConfig, isProviderMode?: boolean): Dependency[] {
     const dependencies: Dependency[] = [
       {
         name: '@pact-foundation/pact',
@@ -249,7 +261,7 @@ describe('{{providerName}} - Provider Verification', () => {
     return dependencies;
   }
 
-  private generateProjectStructure(projectName: string): ProjectStructure {
+  private generateProjectStructure(projectName: string, isProviderMode?: boolean): ProjectStructure {
     return {
       rootDir: '.',
       testDir: './tests',
@@ -259,31 +271,41 @@ describe('{{providerName}} - Provider Verification', () => {
     };
   }
 
-  private generateProjectConfiguration(config: LanguageConfig): ProjectConfiguration {
+  private generateProjectConfiguration(config: LanguageConfig, isProviderMode?: boolean): ProjectConfiguration {
+    const scripts: Record<string, string> = {
+      test: config.framework === 'jest' ? 'jest' : config.framework
+    };
+    
+    if (isProviderMode) {
+      scripts['test:provider'] = `${config.framework} --testPathPattern=provider`;
+    } else {
+      scripts['test:consumer'] = `${config.framework} --testPathPattern=consumer`;
+    }
+    
     return {
       packageManager: config.packageManager,
       testFramework: config.framework,
       language: 'javascript',
       version: config.version,
-      scripts: {
-        test: config.framework === 'jest' ? 'jest' : config.framework,
-        'test:consumer': `${config.framework} --testPathPattern=consumer`,
-        'test:provider': `${config.framework} --testPathPattern=provider`
-      },
+      scripts,
       settings: {
         testFramework: config.framework,
-        packageManager: config.packageManager
+        packageManager: config.packageManager,
+        mode: isProviderMode ? 'provider' : 'consumer'
       }
     };
   }
 
-  private generateSetupInstructions(config: LanguageConfig): string[] {
+  private generateSetupInstructions(config: LanguageConfig, isProviderMode?: boolean): string[] {
     const packageManagerCmd = config.packageManager === 'yarn' ? 'yarn' : 
                              config.packageManager === 'pnpm' ? 'pnpm' :
                              config.packageManager === 'bun' ? 'bun' : 'npm';
     
-    return [
-      '# JavaScript Pact Testing Setup',
+    const testType = isProviderMode ? 'Provider' : 'Consumer';
+    const testCommand = isProviderMode ? 'test:provider' : 'test:consumer';
+    
+    const instructions = [
+      `# JavaScript Pact ${testType} Testing Setup`,
       '',
       '## Prerequisites',
       '- Node.js 16 or higher',
@@ -293,25 +315,39 @@ describe('{{providerName}} - Provider Verification', () => {
       '1. Install dependencies:',
       `   ${packageManagerCmd} install`,
       '',
-      '2. Run consumer tests:',
-      `   ${packageManagerCmd} run test:consumer`,
+      `2. Run ${testType.toLowerCase()} tests:`,
+      `   ${packageManagerCmd} run ${testCommand}`,
       '',
-      '3. Run provider tests:',
-      `   ${packageManagerCmd} run test:provider`,
-      '',
-      '4. Run all tests:',
+      '3. Run all tests:',
       `   ${packageManagerCmd} test`,
       '',
-      '## Configuration',
-      '- Consumer tests generate pact files in ./pacts directory',
-      '- Provider tests verify against pact files',
-      '- Configure provider base URL via PROVIDER_BASE_URL environment variable',
+      '## Configuration'
+    ];
+    
+    if (isProviderMode) {
+      instructions.push(
+        '- Provider tests verify against existing pact files',
+        '- Configure provider base URL via PROVIDER_BASE_URL environment variable',
+        '- Ensure provider states are properly implemented',
+        '- Pact files should be available in ./pacts directory'
+      );
+    } else {
+      instructions.push(
+        '- Consumer tests generate pact files in ./pacts directory',
+        '- Pact files are used by provider verification tests',
+        '- Mock provider interactions are defined in test files'
+      );
+    }
+    
+    instructions.push(
       '',
       `## Framework: ${config.framework}`,
       '- Supports async/await patterns',
       '- Built-in mocking and verification',
       '- Comprehensive assertion methods'
-    ];
+    );
+    
+    return instructions;
   }
 
   private renderTemplate(template: string, context: any): string {

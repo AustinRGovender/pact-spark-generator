@@ -57,7 +57,8 @@ export class TestGenerator {
       consumer: `${this.sanitizeName(spec.info.title)}Consumer`,
       tests: allTests,
       setup: this.generateTestSetup(spec, language, framework),
-      metadata: this.generateTestMetadata(spec, language, framework, isProviderMode)
+      metadata: this.generateTestMetadata(spec, language, framework, isProviderMode),
+      isProviderMode
     };
   }
 
@@ -310,7 +311,8 @@ export class TestGenerator {
       language,
       framework,
       generatedAt: new Date().toISOString(),
-      version: '1.0.0'
+      version: '1.0.0',
+      isProviderMode
     };
   }
 

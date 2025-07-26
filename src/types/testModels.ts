@@ -7,6 +7,7 @@ export interface TestSuite {
   tests: TestCase[];
   setup: TestSetup;
   metadata: TestMetadata;
+  isProviderMode: boolean;
 }
 
 export interface TestCase {
@@ -64,6 +65,7 @@ export interface TestMetadata {
   framework: TestFramework;
   generatedAt: string;
   version: string;
+  isProviderMode: boolean;
 }
 
 export interface Dependency {
