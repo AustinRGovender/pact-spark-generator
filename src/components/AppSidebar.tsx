@@ -39,7 +39,7 @@ const navigationItems = [
   { 
     title: 'Languages', 
     icon: Languages, 
-    href: '#languages',
+    href: '/languages',
     description: 'Supported frameworks'
   },
   { 
