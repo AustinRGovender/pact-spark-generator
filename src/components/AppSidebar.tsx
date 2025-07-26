@@ -74,7 +74,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-glass-border">
-      <SidebarContent className="py-4">
+      <SidebarContent className="py-4 pt-16">
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

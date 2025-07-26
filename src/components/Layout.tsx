@@ -53,9 +53,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         <div className="flex w-full pt-16">
-          <div className="pt-16">
-            <AppSidebar />
-          </div>
+          <AppSidebar />
           
           <main className="flex-1 overflow-auto">
             <div className="p-6">
