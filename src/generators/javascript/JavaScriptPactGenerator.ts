@@ -28,6 +28,17 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
       files.push(this.generateJestConfigFile(config));
     }
 
+    // Generate supporting files
+    if (!testSuite.isProviderMode) {
+      files.push(this.generateApiClientFile());
+    }
+
+    // Generate .env example file
+    files.push(this.generateEnvFile(testSuite.isProviderMode));
+
+    // Generate README
+    files.push(this.generateReadmeFile(testSuite, config));
+
     return {
       files,
       projectStructure: this.generateProjectStructure(testSuite.name, testSuite.isProviderMode),
@@ -57,17 +68,18 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
   }
 
   private generateConsumerTest(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
-    const template = `const { Pact, Matchers } = require('@pact-foundation/pact');
+    const endpointGroups = this.groupTestsByEndpoint(testSuite.tests);
+    const consumerName = testSuite.consumer || 'Consumer';
+    const providerName = testSuite.provider || 'Provider';
+    
+    const content = `const { Pact, Matchers } = require('@pact-foundation/pact');
 const path = require('path');
 const axios = require('axios');
 
-// Import your consumer code here
-// const { apiClient } = require('../src/api-client');
-
-describe('{{consumerName}} - Consumer Pact Tests', () => {
+describe('${consumerName} - Consumer Pact Tests', () => {
   const provider = new Pact({
-    consumer: '{{consumerName}}',
-    provider: '{{providerName}}',
+    consumer: '${consumerName}',
+    provider: '${providerName}',
     dir: path.resolve(process.cwd(), 'pacts'),
     logLevel: 'info'
   });
@@ -75,70 +87,48 @@ describe('{{consumerName}} - Consumer Pact Tests', () => {
   beforeAll(() => provider.setup());
   afterEach(() => provider.verify());
   afterAll(() => provider.finalize());
-
-{{#each endpointGroups}}
-  describe('{{endpoint}} endpoint', () => {
-{{#each tests}}
-    describe('{{method}} {{../endpoint}}', () => {
-      it('{{description}}', async () => {
-        // Arrange - Set up the interaction
-        await provider
-          .given('{{providerState}}')
-          .uponReceiving('{{description}}')
-          .withRequest({
-            method: '{{method}}',
-            path: '{{path}}'{{#if query}},
-            query: {{json query}}{{/if}}{{#if headers}},
-            headers: {
-              'Content-Type': 'application/json',
-              {{#each headers}}
-              '{{@key}}': '{{this}}'{{#unless @last}},{{/unless}}
-              {{/each}}
-            }{{else}},
-            headers: {
-              'Content-Type': 'application/json'
-            }{{/if}}{{#if body}},
-            body: {{pactMatchers body}}{{/if}}
-          })
-          .willRespondWith({
-            status: {{status}},
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: {{pactMatchers responseBody}}
-          });
-
-        // Act - Call your consumer code here
-        const response = await axios({
-          method: '{{method}}',
-          url: \`\${provider.mockService.baseUrl}{{path}}\`{{#if body}},
-          data: {{json body}}{{/if}}{{#if headers}},
-          headers: {{json headers}}{{/if}}
+${endpointGroups.map(group => `
+  describe('${group.endpoint} endpoint', () => {
+${group.tests.map(test => `    it('${test.description}', async () => {
+      // Arrange - Set up the interaction
+      await provider
+        .given('${test.providerState || 'default state'}')
+        .uponReceiving('${test.description}')
+        .withRequest({
+          method: '${test.request.method}',
+          path: '${test.request.path}'${test.request.queryParams ? `,
+          query: ${JSON.stringify(test.request.queryParams)}` : ''}${test.request.headers ? `,
+          headers: ${JSON.stringify(test.request.headers)}` : `,
+          headers: {
+            'Content-Type': 'application/json'
+          }`}${test.request.body ? `,
+          body: ${this.generatePactMatchers(test.request.body)}` : ''}
+        })
+        .willRespondWith({
+          status: ${test.response.status},
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: ${this.generatePactMatchers(test.response.body)}
         });
 
-        // Assert - Verify the response
-        expect(response.status).toBe({{status}});
-        expect(response.data).toMatchObject({{json responseBody}});
+      // Act - Make the actual API call
+      const response = await axios({
+        method: '${test.request.method}',
+        url: \`\${provider.mockService.baseUrl}${test.request.path}\`${test.request.body ? `,
+        data: ${JSON.stringify(test.request.body)}` : ''}${test.request.headers ? `,
+        headers: ${JSON.stringify(test.request.headers)}` : ''}
       });
-    });
-{{/each}}
-  });
-{{/each}}
+
+      // Assert - Verify the response
+      expect(response.status).toBe(${test.response.status});
+      expect(response.data).toMatchObject(${JSON.stringify(test.response.body)});
+    });`).join('\n')}
+  });`).join('')}
 });`;
 
-    // Group tests by endpoint for better organization
-    const endpointGroups = this.groupTestsByEndpoint(testSuite.tests);
-    
-    const content = this.renderTemplate(template, {
-      consumerName: testSuite.consumer,
-      providerName: testSuite.provider,
-      endpointGroups,
-      json: (obj: any) => JSON.stringify(obj, null, 2),
-      pactMatchers: (obj: any) => this.generatePactMatchers(obj)
-    });
-
     return {
-      path: `tests/${this.sanitizeName(testSuite.consumer)}_consumer.test.js`,
+      path: `tests/${this.sanitizeName(consumerName)}_consumer.test.js`,
       content,
       type: 'test',
       language: 'javascript',
@@ -147,30 +137,41 @@ describe('{{consumerName}} - Consumer Pact Tests', () => {
   }
 
   private generateProviderTest(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
-    const template = `const { Verifier } = require('@pact-foundation/pact');
+    const consumerName = testSuite.consumer || 'Consumer';
+    const providerName = testSuite.provider || 'Provider';
+    const providerStates = Array.from(new Set(testSuite.tests.map(t => t.providerState).filter(Boolean)));
+    const kebabConsumer = this.toKebabCase(consumerName);
+    const kebabProvider = this.toKebabCase(providerName);
+    
+    // Generate Express routes based on test operations
+    const routeImplementations = this.generateProviderRoutes(testSuite);
+    
+    const content = `const { Verifier } = require('@pact-foundation/pact');
 const path = require('path');
 const express = require('express');
 
-// Import your provider app
-// const { createApp } = require('../src/app');
-
-describe('{{providerName}} - Provider Verification', () => {
+describe('${providerName} - Provider Verification', () => {
   let server;
   let app;
   const PORT = process.env.PORT || 3000;
   const PROVIDER_BASE_URL = process.env.PROVIDER_BASE_URL || \`http://localhost:\${PORT}\`;
 
   beforeAll(async () => {
-    // Set up your Express app
+    // Set up Express app with actual routes
     app = express();
     app.use(express.json());
     
-    // Add your API routes here
-    // app.use('/api', require('../src/routes'));
+    ${routeImplementations}
     
     // Start the server
-    server = app.listen(PORT, () => {
-      console.log(\`Provider server running on port \${PORT}\`);
+    server = await new Promise((resolve, reject) => {
+      const srv = app.listen(PORT, (err) => {
+        if (err) reject(err);
+        else {
+          console.log(\`Provider server running on port \${PORT}\`);
+          resolve(srv);
+        }
+      });
     });
   });
 
@@ -180,51 +181,35 @@ describe('{{providerName}} - Provider Verification', () => {
     }
   });
 
-  it('should validate the expectations of {{consumerName}}', async () => {
+  it('should validate the expectations of ${consumerName}', async () => {
     const opts = {
-      provider: '{{providerName}}',
+      provider: '${providerName}',
       providerBaseUrl: PROVIDER_BASE_URL,
       pactUrls: [
-        path.resolve(process.cwd(), 'pacts', '{{kebabCase consumerName}}-{{kebabCase providerName}}.json')
+        path.resolve(process.cwd(), 'pacts', '${kebabConsumer}-${kebabProvider}.json')
       ],
       stateHandlers: {
-{{#each providerStates}}
-        '{{this}}': async () => {
-          console.log('Setting up provider state: {{this}}');
-          // Add your state setup logic here
-          // Example: await setupTestData();
-          return Promise.resolve('Provider state "{{this}}" has been set up');
-        },
-{{/each}}
-        // Default state handler for states without specific implementation
-        default: async () => {
-          console.log('Default state handler - no specific setup required');
-          return Promise.resolve('Default state configured');
+${providerStates.map(state => `        '${state}': async () => {
+          console.log('Setting up provider state: ${state}');
+          // State setup completed
+          return Promise.resolve();
+        }`).join(',\n')}${providerStates.length > 0 ? ',' : ''}
+        'default state': async () => {
+          console.log('Default state - no specific setup required');
+          return Promise.resolve();
         }
       },
-      // Enable verbose logging for debugging
       logLevel: 'debug',
-      // Optional: Publish verification results to Pact Broker
-      // publishVerificationResult: process.env.CI === 'true',
-      // providerVersion: process.env.GIT_COMMIT || '1.0.0',
-      // enablePending: true
+      publishVerificationResult: process.env.CI === 'true',
+      providerVersion: process.env.GIT_COMMIT || '1.0.0'
     };
 
     return new Verifier(opts).verifyProvider();
   });
 });`;
 
-    const providerStates = Array.from(new Set(testSuite.tests.map(t => t.providerState).filter(Boolean)));
-    
-    const content = this.renderTemplate(template, {
-      consumerName: testSuite.consumer,
-      providerName: testSuite.provider,
-      providerStates,
-      kebabCase: (str: string) => str.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`).replace(/^-/, '')
-    });
-
     return {
-      path: `tests/${this.sanitizeName(testSuite.provider)}_provider.test.js`,
+      path: `tests/${this.sanitizeName(providerName)}_provider.test.js`,
       content,
       type: 'test',
       language: 'javascript',
@@ -521,7 +506,7 @@ describe('{{providerName}} - Provider Verification', () => {
         ...test,
         method: test.request.method,
         path: test.request.path,
-        query: test.request.queryParams,
+        query: test.request.queryParams || {},
         headers: test.request.headers,
         body: test.request.body,
         status: test.response.status,
@@ -573,4 +558,213 @@ describe('{{providerName}} - Provider Verification', () => {
       return JSON.stringify(obj, null, 2);
     }
   }
+
+  private generateProviderRoutes(testSuite: TestSuite): string {
+    const routes = new Map<string, Set<string>>();
+    
+    // Collect unique paths and methods
+    testSuite.tests.forEach(test => {
+      const path = test.request.path;
+      const method = test.request.method.toLowerCase();
+      
+      if (!routes.has(path)) {
+        routes.set(path, new Set());
+      }
+      routes.get(path)!.add(method);
+    });
+    
+    const routeCode = Array.from(routes.entries()).map(([path, methods]) => {
+      const expressPath = path.replace(/{([^}]+)}/g, ':$1');
+      
+      return Array.from(methods).map(method => {
+        // Find a sample response for this path/method
+        const sampleTest = testSuite.tests.find(t => 
+          t.request.path === path && t.request.method.toLowerCase() === method
+        );
+        
+        const responseBody = sampleTest?.response.body || { message: 'Success' };
+        const statusCode = sampleTest?.response.status || 200;
+        
+        return `    app.${method}('${expressPath}', (req, res) => {
+      res.status(${statusCode}).json(${JSON.stringify(responseBody)});
+    });`;
+      }).join('\n');
+    }).join('\n');
+    
+    return routeCode;
+  }
+
+  private generateApiClientFile(): GeneratedFile {
+    const content = `const axios = require('axios');
+
+class ApiClient {
+  constructor(baseURL = 'http://localhost:3000') {
+    this.client = axios.create({
+      baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
+  }
+
+  async get(path, params = {}) {
+    return this.client.get(path, { params });
+  }
+
+  async post(path, data = {}) {
+    return this.client.post(path, data);
+  }
+
+  async put(path, data = {}) {
+    return this.client.put(path, data);
+  }
+
+  async delete(path) {
+    return this.client.delete(path);
+  }
+
+  async patch(path, data = {}) {
+    return this.client.patch(path, data);
+  }
+}
+
+module.exports = { ApiClient };`;
+
+    return {
+      path: 'src/api-client.js',
+      content,
+      type: 'setup',
+      language: 'javascript',
+      description: 'API client for making HTTP requests'
+    };
+  }
+
+  private generateEnvFile(isProviderMode: boolean): GeneratedFile {
+    const content = isProviderMode 
+      ? `# Provider configuration
+PORT=3000
+PROVIDER_BASE_URL=http://localhost:3000
+
+# Pact Broker configuration (optional)
+PACT_BROKER_BASE_URL=
+PACT_BROKER_USERNAME=
+PACT_BROKER_PASSWORD=
+
+# CI/CD configuration
+CI=false
+GIT_COMMIT=1.0.0`
+      : `# Consumer configuration
+API_BASE_URL=http://localhost:3000
+
+# Test configuration
+TEST_TIMEOUT=5000`;
+
+    return {
+      path: '.env.example',
+      content,
+      type: 'config',
+      language: 'javascript',
+      description: 'Environment variables template'
+    };
+  }
+
+  private generateReadmeFile(testSuite: TestSuite, config: LanguageConfig): GeneratedFile {
+    const isProviderMode = testSuite.isProviderMode;
+    const testType = isProviderMode ? 'Provider' : 'Consumer';
+    const packageManagerCmd = config.packageManager === 'yarn' ? 'yarn' : 
+                             config.packageManager === 'pnpm' ? 'pnpm' :
+                             config.packageManager === 'bun' ? 'bun' : 'npm';
+
+    const content = `# ${testSuite.name} Pact ${testType} Tests
+
+## Overview
+This project contains Pact ${testType.toLowerCase()} tests for the ${testSuite.name} API.
+
+## Getting Started
+
+### Prerequisites
+- Node.js 16 or higher
+- ${config.packageManager} package manager
+
+### Installation
+\`\`\`bash
+${packageManagerCmd} install
+\`\`\`
+
+### Running Tests
+\`\`\`bash
+# Run all tests
+${packageManagerCmd} test
+
+# Run ${testType.toLowerCase()} tests only
+${packageManagerCmd} run test:${testType.toLowerCase()}
+\`\`\`
+
+${isProviderMode ? `### Provider Testing
+This project verifies that the provider implementation matches the contract defined by the consumer.
+
+#### Configuration
+- Set \`PROVIDER_BASE_URL\` environment variable to point to your running provider
+- Ensure your provider server is running before executing tests
+- Pact files should be available in the \`./pacts\` directory
+
+#### Provider States
+The following provider states are implemented:
+${Array.from(new Set(testSuite.tests.map(t => t.providerState).filter(Boolean))).map(state => `- ${state}`).join('\n')}
+
+#### Express Server Routes
+The test includes a mock Express server with the following routes:
+${Array.from(new Set(testSuite.tests.map(t => `${t.request.method} ${t.request.path}`))).map(route => `- ${route}`).join('\n')}` : `### Consumer Testing
+This project generates contract files that define the expected behavior of the provider.
+
+#### Generated Contracts
+- Pact files are generated in the \`./pacts\` directory
+- These files should be shared with the provider team for verification
+
+#### API Client
+A reusable API client is included at \`src/api-client.js\` for making HTTP requests.
+
+#### Test Structure
+Tests are organized by endpoint:
+${Array.from(new Set(testSuite.tests.map(t => t.request.path))).map(path => `- ${path}`).join('\n')}`}
+
+## Project Structure
+\`\`\`
+.
+├── tests/                  # Test files
+├── src/                    # Source files (consumer only)
+├── pacts/                  # Generated pact files
+├── package.json           # Dependencies and scripts
+├── jest.config.js         # Jest configuration
+├── .env.example          # Environment variables template
+└── README.md             # This file
+\`\`\`
+
+## Framework: ${config.framework}
+This project uses ${config.framework} as the testing framework with the following features:
+- Async/await support
+- Built-in mocking and assertions
+- Comprehensive test reporting
+
+## Contributing
+1. Make changes to the OpenAPI specification
+2. Regenerate tests using the Pact generator
+3. Update provider states as needed
+4. Run tests to verify functionality
+
+## Support
+For questions or issues, please refer to the Pact documentation:
+- [Pact JS Documentation](https://docs.pact.io/implementation_guides/javascript)
+- [Pact Foundation](https://pact.io/)`;
+
+    return {
+      path: 'README.md',
+      content,
+      type: 'documentation',
+      language: 'javascript',
+      description: 'Project documentation and setup instructions'
+    };
+  }
+
 }
