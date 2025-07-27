@@ -208,10 +208,10 @@ const Framework = () => {
             </div>
 
             <Tabs defaultValue="configure" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="flex w-full">
                 <TabsTrigger value="configure">Configure</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
-                <TabsTrigger value="generate">Generate</TabsTrigger>
+                <TabsTrigger value="generate">Build</TabsTrigger>
               </TabsList>
 
               <TabsContent value="configure" className="space-y-6">
