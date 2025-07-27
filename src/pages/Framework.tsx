@@ -12,32 +12,33 @@ import { FrameworkGenerator } from '@/utils/frameworkGenerator';
 import { parseSwaggerFile, ParsedSpec } from '@/utils/swaggerParser';
 import { useToast } from '@/hooks/use-toast';
 import { FileUploader } from '@/components/FileUploader';
-import { Download, Code2, Zap, Shield, Database, TestTube, GitBranch, Package } from 'lucide-react';
+import { Download, Code2, Zap, Shield, Database, TestTube, GitBranch, Package, RotateCcw } from 'lucide-react';
+
+const DEFAULT_CONFIG: FrameworkConfig = {
+  language: 'JavaScript/TypeScript',
+  framework: 'express',
+  projectName: 'my-api-project',
+  description: 'A modern API framework built with best practices',
+  version: '1.0.0',
+  author: '',
+  features: {
+    database: 'postgresql',
+    authentication: 'jwt',
+    apiDocumentation: true,
+    testing: true,
+    cicd: 'github-actions',
+    docker: true,
+    monitoring: true,
+    codeQuality: true
+  }
+};
 
 const Framework = () => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [openApiSpec, setOpenApiSpec] = useState<ParsedSpec | null>(null);
   const [generationResult, setGenerationResult] = useState<FrameworkGenerationResult | null>(null);
-  
-  const [config, setConfig] = useState<FrameworkConfig>({
-    language: 'JavaScript/TypeScript',
-    framework: 'express',
-    projectName: 'my-api-project',
-    description: 'A modern API framework built with best practices',
-    version: '1.0.0',
-    author: '',
-    features: {
-      database: 'postgresql',
-      authentication: 'jwt',
-      apiDocumentation: true,
-      testing: true,
-      cicd: 'github-actions',
-      docker: true,
-      monitoring: true,
-      codeQuality: true
-    }
-  });
+  const [config, setConfig] = useState<FrameworkConfig>(DEFAULT_CONFIG);
 
   const handleSpecUpload = async (files: File[]) => {
     if (files.length === 0) return;
@@ -127,6 +128,17 @@ const Framework = () => {
     }
   };
 
+  const handleReset = () => {
+    setConfig(DEFAULT_CONFIG);
+    setOpenApiSpec(null);
+    setGenerationResult(null);
+    
+    toast({
+      title: "Configuration Reset",
+      description: "All settings have been reset to defaults",
+    });
+  };
+
   const getFeatureIcon = (feature: keyof FrameworkFeatures) => {
     const icons = {
       database: Database,
@@ -172,11 +184,23 @@ const Framework = () => {
 
       <div className="space-y-6">
         {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Generate Framework</h1>
-          <p className="text-muted-foreground">
-            Create a complete, enterprise-ready API framework with your preferred stack and features.
-          </p>
+        <div className="flex items-start justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">Generate Framework</h1>
+            <p className="text-muted-foreground">
+              Create a complete, enterprise-ready API framework with your preferred stack and features.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={isGenerating}
+            className="ml-4"
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset
+          </Button>
         </div>
 
         <Tabs defaultValue="configure" className="space-y-6">
