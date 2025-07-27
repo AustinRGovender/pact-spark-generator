@@ -36,6 +36,12 @@ const navigationItems = [
     href: '/languages',
     description: 'Supported frameworks'
   },
+  { 
+    title: 'Generate Framework', 
+    icon: Code2, 
+    href: '/framework',
+    description: 'Enterprise-ready skeleton'
+  },
 ];
 
 const resourceItems = [

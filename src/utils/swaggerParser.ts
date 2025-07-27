@@ -4,6 +4,7 @@ export interface ParsedOperation {
   method: string;
   operationId?: string;
   summary?: string;
+  description?: string;
   tags?: string[];
   parameters?: any[];
   requestBody?: any;
@@ -14,9 +15,11 @@ export interface ParsedSpec {
   info: {
     title: string;
     version: string;
+    description?: string;
   };
   operations: ParsedOperation[];
   servers?: any[];
+  schemas?: Record<string, any>;
 }
 
 export const parseSwaggerFile = async (content: string, filename: string): Promise<ParsedSpec> => {
@@ -52,7 +55,8 @@ export const parseSwaggerFile = async (content: string, filename: string): Promi
               path,
               method: method.toUpperCase(),
               operationId: operation.operationId,
-              summary: operation.summary || operation.description,
+              summary: operation.summary,
+              description: operation.description,
               tags: operation.tags || ['default'],
               parameters: operation.parameters,
               requestBody: operation.requestBody,
@@ -67,6 +71,7 @@ export const parseSwaggerFile = async (content: string, filename: string): Promi
       info: spec.info || { title: filename, version: '1.0.0' },
       operations,
       servers: spec.servers,
+      schemas: spec.components?.schemas || spec.definitions,
     };
   } catch (error) {
     console.error('Error parsing OpenAPI spec:', error);
