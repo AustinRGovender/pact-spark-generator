@@ -482,6 +482,27 @@ export class ${name}Service {
         }
       ];
     }
+    
+    if (config.features.cicd === 'gitlab-ci') {
+      return [
+        {
+          path: '.gitlab-ci.yml',
+          content: this.generateGitLabCI(config),
+          description: 'GitLab CI/CD pipeline'
+        }
+      ];
+    }
+    
+    if (config.features.cicd === 'azure-devops') {
+      return [
+        {
+          path: 'azure-pipelines.yml',
+          content: this.generateAzureDevOps(config),
+          description: 'Azure DevOps CI/CD pipeline'
+        }
+      ];
+    }
+    
     return [];
   }
 
@@ -937,6 +958,207 @@ jobs:
 
     - name: Deploy to production
       run: echo "Add your deployment script here"`;
+  }
+
+  private static generateGitLabCI(config: FrameworkConfig): string {
+    return `stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  NODE_VERSION: "18"
+
+cache:
+  paths:
+    - node_modules/
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq git curl
+  - curl -fsSL https://deb.nodesource.com/setup_\${NODE_VERSION}.x | bash -
+  - apt-get install -y nodejs
+  - npm install
+
+test:
+  stage: test
+  script:
+    - npm run lint
+    - npm test
+    - npm run build
+  coverage: '/Lines\\s*:\\s*(\\d+\\.?\\d*)%/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage/cobertura-coverage.xml
+
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour
+  only:
+    - main
+    - develop
+
+deploy_staging:
+  stage: deploy
+  script:
+    - echo "Deploying to staging environment"
+    - echo "Add your staging deployment script here"
+  environment:
+    name: staging
+    url: https://staging.yourdomain.com
+  only:
+    - develop
+
+deploy_production:
+  stage: deploy
+  script:
+    - echo "Deploying to production environment"
+    - echo "Add your production deployment script here"
+  environment:
+    name: production
+    url: https://yourdomain.com
+  when: manual
+  only:
+    - main`;
+  }
+
+  private static generateAzureDevOps(config: FrameworkConfig): string {
+    return `# Azure DevOps Pipeline for ${config.projectName}
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  nodeVersion: '18.x'
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Test
+  displayName: 'Test Stage'
+  jobs:
+  - job: Test
+    displayName: 'Test Job'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      matrix:
+        Node18:
+          nodeVersion: '18.x'
+        Node20:
+          nodeVersion: '20.x'
+    
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '\$(nodeVersion)'
+    
+    - task: Cache@2
+      displayName: 'Cache npm dependencies'
+      inputs:
+        key: 'npm | "\$(Agent.OS)" | package-lock.json'
+        restoreKeys: |
+          npm | "\$(Agent.OS)"
+        path: ~/.npm
+    
+    - script: npm ci
+      displayName: 'Install dependencies'
+    
+    - script: npm run lint
+      displayName: 'Run linter'
+    
+    - script: npm test
+      displayName: 'Run tests'
+    
+    - script: npm run build
+      displayName: 'Build application'
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish test results'
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: 'coverage/junit.xml'
+        testRunTitle: 'Jest Tests'
+    
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish code coverage'
+      condition: succeededOrFailed()
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: 'coverage/cobertura-coverage.xml'
+
+- stage: Build
+  displayName: 'Build Stage'
+  dependsOn: Test
+  condition: succeeded()
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: NodeTool@0
+      displayName: 'Install Node.js'
+      inputs:
+        versionSpec: '\$(nodeVersion)'
+    
+    - script: npm ci
+      displayName: 'Install dependencies'
+    
+    - script: npm run build
+      displayName: 'Build application'
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish build artifacts'
+      inputs:
+        pathToPublish: 'dist'
+        artifactName: 'dist'
+        publishLocation: 'Container'
+${config.features.docker ? `
+    - task: Docker@2
+      displayName: 'Build Docker image'
+      inputs:
+        command: 'build'
+        Dockerfile: 'Dockerfile'
+        tags: '\$(Build.Repository.Name):\$(Build.BuildId)'` : ''}
+
+- stage: Deploy
+  displayName: 'Deploy Stage'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: Deploy
+    displayName: 'Deploy Job'
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: dist
+          
+          - script: echo "Add your deployment script here"
+            displayName: 'Deploy to production'
+          
+          - script: echo "Deployment completed successfully"
+            displayName: 'Deployment confirmation'`;
   }
 
   private static generateGitIgnore(config: FrameworkConfig): string {

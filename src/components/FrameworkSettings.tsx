@@ -55,7 +55,8 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
   const cicdOptions: { value: CiCdType; label: string }[] = [
     { value: 'none', label: 'No CI/CD' },
     { value: 'github-actions', label: 'GitHub Actions' },
-    { value: 'gitlab-ci', label: 'GitLab CI' }
+    { value: 'gitlab-ci', label: 'GitLab CI' },
+    { value: 'azure-devops', label: 'Azure DevOps' }
   ];
 
   const selectedFramework = frameworkOptions.find(f => f.value === config.framework);

@@ -12,7 +12,7 @@ export type AuthType =
   | 'jwt' | 'oauth2' | 'basic' | 'none';
 
 export type CiCdType = 
-  | 'github-actions' | 'gitlab-ci' | 'none';
+  | 'github-actions' | 'gitlab-ci' | 'azure-devops' | 'none';
 
 export interface FrameworkFeatures {
   database: DatabaseType;
