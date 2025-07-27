@@ -51,6 +51,13 @@ export const parseSwaggerFile = async (content: string, filename: string): Promi
         httpMethods.forEach(method => {
           if (pathItem[method]) {
             const operation = pathItem[method];
+            
+            // Normalize parameters to always be an array
+            // Combine path-level and operation-level parameters
+            const pathParameters = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
+            const operationParameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+            const allParameters = [...pathParameters, ...operationParameters];
+            
             operations.push({
               path,
               method: method.toUpperCase(),
@@ -58,7 +65,7 @@ export const parseSwaggerFile = async (content: string, filename: string): Promi
               summary: operation.summary,
               description: operation.description,
               tags: operation.tags || ['default'],
-              parameters: operation.parameters,
+              parameters: allParameters,
               requestBody: operation.requestBody,
               responses: operation.responses,
             });

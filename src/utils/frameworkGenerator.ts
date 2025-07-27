@@ -1207,7 +1207,7 @@ ${op.summary || 'Endpoint description'}
 ${op.description ? `**Description:** ${op.description}` : ''}
 
 **Parameters:**
-${op.parameters ? op.parameters.map((p: any) => `- \`${p.name}\` (${p.in}) - ${p.description || 'Parameter description'}`).join('\n') : 'No parameters'}
+${Array.isArray(op.parameters) && op.parameters.length > 0 ? op.parameters.map((p: any) => `- \`${p.name}\` (${p.in}) - ${p.description || 'Parameter description'}`).join('\n') : 'No parameters'}
 
 **Response:**
 \`\`\`json
