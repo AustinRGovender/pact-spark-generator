@@ -46,6 +46,7 @@ export const TestModeToggle: React.FC<TestModeToggleProps> = ({
           id="test-mode"
           checked={isProviderMode}
           onCheckedChange={onToggle}
+          size="lg"
         />
         <Label htmlFor="test-mode" className="text-slate-700 font-medium text-xs sm:text-sm">
           Provider Mode

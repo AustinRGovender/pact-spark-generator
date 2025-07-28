@@ -64,6 +64,7 @@ export const RegenerationPanel: React.FC<RegenerationPanelProps> = ({
           <Switch
             checked={autoRegenerate}
             onCheckedChange={onAutoRegenerateChange}
+            size="lg"
           />
         </div>
 

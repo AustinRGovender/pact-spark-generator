@@ -223,6 +223,7 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
                 id="apiDocumentation"
                 checked={config.features.apiDocumentation}
                 onCheckedChange={(checked) => updateFeatures({ apiDocumentation: checked })}
+                size="md"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -236,6 +237,7 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
                 id="testing"
                 checked={config.features.testing}
                 onCheckedChange={(checked) => updateFeatures({ testing: checked })}
+                size="md"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -249,6 +251,7 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
                 id="codeQuality"
                 checked={config.features.codeQuality}
                 onCheckedChange={(checked) => updateFeatures({ codeQuality: checked })}
+                size="md"
               />
             </div>
           </div>
@@ -274,6 +277,7 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
                 id="docker"
                 checked={config.features.docker}
                 onCheckedChange={(checked) => updateFeatures({ docker: checked })}
+                size="md"
               />
             </div>
             <div className="space-y-2">
@@ -305,6 +309,7 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
                 id="monitoring"
                 checked={config.features.monitoring}
                 onCheckedChange={(checked) => updateFeatures({ monitoring: checked })}
+                size="md"
               />
             </div>
           </div>

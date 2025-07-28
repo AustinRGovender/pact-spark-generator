@@ -180,6 +180,7 @@ export const DockerSettings: React.FC<DockerSettingsProps> = ({ isOpen, onClose 
                     ...prev,
                     config: {...prev.config, tls: checked}
                   } : null)}
+                  size="sm"
                 />
                 <Label htmlFor="tcp-tls">Use TLS</Label>
               </div>

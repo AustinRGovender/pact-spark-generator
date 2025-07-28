@@ -84,6 +84,7 @@ export const EnhancedSettingsCard: React.FC<EnhancedSettingsCardProps> = ({
             <Switch
               checked={isProviderMode}
               onCheckedChange={onProviderModeChange}
+              size="lg"
             />
           </div>
           
