@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Copy, Download, Eye, Code, Maximize2, Minimize2 } from 'lucide-react';
+import { Copy, Download, FileText, Maximize2, Minimize2, Code } from 'lucide-react';
 import { SyntaxHighlighter } from './SyntaxHighlighter';
 import { GeneratedOutput, GeneratedFile, SupportedLanguage } from '../types/languageTypes';
 import { useToast } from './ui/use-toast';
@@ -21,7 +21,6 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
   isLoading = false
 }) => {
   const [selectedFile, setSelectedFile] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'preview' | 'raw'>('preview');
   const [isMaximized, setIsMaximized] = useState(false);
   const { toast } = useToast();
 
@@ -62,12 +61,12 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
 
   const currentFile = generatedOutput.files.find(f => f.path === selectedFile) || generatedOutput.files[0];
 
-  const handleCopyToClipboard = async (content: string) => {
+  const handleCopyToClipboard = async (content: string, type: 'formatted' | 'plain' = 'plain') => {
     try {
       await navigator.clipboard.writeText(content);
       toast({
         title: "Copied to clipboard",
-        description: "Code has been copied to your clipboard",
+        description: `${type === 'formatted' ? 'Formatted code' : 'Plain text'} has been copied to your clipboard`,
       });
     } catch (err) {
       toast({
@@ -166,7 +165,16 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleCopyToClipboard(currentFile.content)}
+                      onClick={() => handleCopyToClipboard(currentFile.content, 'plain')}
+                      title="Copy as plain text"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopyToClipboard(currentFile.content, 'formatted')}
+                      title="Copy formatted code"
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
@@ -174,6 +182,7 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDownloadFile(currentFile)}
+                      title="Download file"
                     >
                       <Download className="h-4 w-4" />
                     </Button>
@@ -181,16 +190,10 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
                 </div>
 
                 <div className={`border rounded-lg overflow-hidden overflow-y-auto scroll-container-mobile ${isMaximized ? 'max-h-[60vh]' : 'max-h-64'}`}>
-                  {viewMode === 'preview' ? (
-                    <SyntaxHighlighter
-                      code={currentFile.content}
-                      language={getLanguageFromExtension(currentFile.path)}
-                    />
-                  ) : (
-                    <pre className="p-4 text-xs font-mono bg-muted text-muted-foreground whitespace-pre-wrap">
-                      {currentFile.content}
-                    </pre>
-                  )}
+                  <SyntaxHighlighter
+                    code={currentFile.content}
+                    language={getLanguageFromExtension(currentFile.path)}
+                  />
                 </div>
               </>
             )}
@@ -258,22 +261,6 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <Button
-                variant={viewMode === 'preview' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('preview')}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-              <Button
-                variant={viewMode === 'raw' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setViewMode('raw')}
-              >
-                <Code className="h-4 w-4 mr-2" />
-                Raw
-              </Button>
-              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsMaximized(true)}
@@ -301,22 +288,6 @@ export const CodePreview: React.FC<CodePreviewProps> = ({
                 </p>
               </div>
               <div className="flex items-center space-x-2">
-                <Button
-                  variant={viewMode === 'preview' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('preview')}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview
-                </Button>
-                <Button
-                  variant={viewMode === 'raw' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('raw')}
-                >
-                  <Code className="h-4 w-4 mr-2" />
-                  Raw
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
