@@ -19,7 +19,9 @@ interface LoadingOverlayProps {
   steps: LoadingStep[];
   onCancel?: () => void;
   estimatedTime?: number;
+  actualTime?: number;
   canCancel?: boolean;
+  processingRate?: string;
 }
 
 export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
@@ -29,7 +31,9 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   steps,
   onCancel,
   estimatedTime,
-  canCancel = true
+  actualTime,
+  canCancel = true,
+  processingRate
 }) => {
   if (!isVisible) return null;
 
@@ -104,10 +108,23 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
             ))}
           </div>
 
-          {/* Estimated Time */}
-          {estimatedTime && estimatedTime > 0 && (
+          {/* Time Information */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {actualTime && actualTime > 0 && (
+              <div className="text-center text-muted-foreground">
+                Elapsed: {Math.ceil(actualTime / 1000)}s
+              </div>
+            )}
+            {estimatedTime && estimatedTime > 0 && actualTime && (
+              <div className="text-center text-muted-foreground">
+                Remaining: ~{Math.max(0, Math.ceil((estimatedTime - actualTime) / 1000))}s
+              </div>
+            )}
+          </div>
+          
+          {processingRate && (
             <div className="text-center text-sm text-muted-foreground">
-              Estimated time remaining: {Math.ceil(estimatedTime / 1000)}s
+              {processingRate}
             </div>
           )}
 

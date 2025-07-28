@@ -6,10 +6,12 @@ import { GenerationProgress } from '../components/GenerationProgress';
 import { Layout } from '../components/Layout';
 import { ThemeProvider } from '../components/ThemeProvider';
 import { EnhancedSettingsCard } from '../components/EnhancedSettingsCard';
+import { SpecComplexityAlert } from '../components/SpecComplexityAlert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { useCodeGeneration } from '../hooks/useCodeGeneration';
+import { shouldShowLargeSpecWarning } from '../utils/specAnalyzer';
 import { 
   Sparkles, 
   Zap, 
@@ -20,7 +22,12 @@ import {
   Clock,
   Trash2,
   FileText,
-  Settings
+  Settings,
+  Database,
+  Layers,
+  Cpu,
+  Package,
+  CheckCircle
 } from 'lucide-react';
 
 const Index = () => {
@@ -34,6 +41,10 @@ const Index = () => {
     hasSettingsChanged,
     generationStatus,
     estimatedTime,
+    specComplexity,
+    processingSteps,
+    currentStepIndex,
+    actualProcessingTime,
     handleFileUpload,
     regenerateCode,
     updateSettings,
@@ -41,37 +52,35 @@ const Index = () => {
     cancelGeneration,
   } = useCodeGeneration({ autoRegenerate });
 
-  // Create loading steps for the overlay
-  const loadingSteps = [
-    {
-      id: 'parsing',
-      label: 'Parse OpenAPI Specification',
-      icon: <FileText className="h-4 w-4" />,
-      completed: generationStatus.stage === 'complete' || ['analyzing', 'generating', 'formatting'].includes(generationStatus.stage),
-      active: generationStatus.stage === 'parsing'
-    },
-    {
-      id: 'analyzing',
-      label: 'Analyze API Structure',
-      icon: <Settings className="h-4 w-4" />,
-      completed: generationStatus.stage === 'complete' || ['generating', 'formatting'].includes(generationStatus.stage),
-      active: generationStatus.stage === 'analyzing'
-    },
-    {
-      id: 'generating',
-      label: 'Generate Test Cases',
-      icon: <Code2 className="h-4 w-4" />,
-      completed: generationStatus.stage === 'complete' || generationStatus.stage === 'formatting',
-      active: generationStatus.stage === 'generating'
-    },
-    {
-      id: 'formatting',
-      label: 'Format Code Output',
-      icon: <FileCheck className="h-4 w-4" />,
-      completed: generationStatus.stage === 'complete',
-      active: generationStatus.stage === 'formatting'
-    }
-  ];
+  // Generate dynamic loading steps based on processing steps
+  const loadingSteps = processingSteps.map((step, index) => {
+    const isCompleted = currentStepIndex > index || generationStatus.stage === 'complete';
+    const isActive = currentStepIndex === index && generationStatus.stage !== 'complete' && generationStatus.stage !== 'idle';
+    
+    const iconMap: Record<string, React.ReactNode> = {
+      parsing: <FileText className="h-4 w-4" />,
+      analyzing: <Settings className="h-4 w-4" />,
+      'schema-processing': <Database className="h-4 w-4" />,
+      'endpoint-batching': <Layers className="h-4 w-4" />,
+      'memory-management': <Cpu className="h-4 w-4" />,
+      generating: <Code2 className="h-4 w-4" />,
+      'chunked-processing': <Package className="h-4 w-4" />,
+      formatting: <CheckCircle className="h-4 w-4" />
+    };
+    
+    return {
+      id: step.id,
+      label: step.label,
+      icon: iconMap[step.id] || <Settings className="h-4 w-4" />,
+      completed: isCompleted,
+      active: isActive
+    };
+  });
+  
+  // Calculate processing rate
+  const processingRate = specComplexity && actualProcessingTime > 1000 
+    ? `${Math.round((generationStatus.filesGenerated || 0) / (actualProcessingTime / 1000))} files/sec`
+    : undefined;
 
   return (
     <ThemeProvider defaultTheme="system">
@@ -142,6 +151,10 @@ const Index = () => {
                 </CardContent>
               </Card>
 
+              {/* Spec Complexity Alert */}
+              {specComplexity && shouldShowLargeSpecWarning(specComplexity) && (
+                <SpecComplexityAlert complexity={specComplexity} />
+              )}
 
               {/* Enhanced Settings */}
               <EnhancedSettingsCard
@@ -221,6 +234,8 @@ const Index = () => {
           steps={loadingSteps}
           onCancel={cancelGeneration}
           estimatedTime={estimatedTime}
+          actualTime={actualProcessingTime}
+          processingRate={processingRate}
           canCancel={generationStatus.stage !== 'complete'}
         />
       </Layout>
