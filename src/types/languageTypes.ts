@@ -1,3 +1,5 @@
+import { AdvancedTestConfig } from './testConfigTypes';
+
 export interface LanguageConfig {
   language: SupportedLanguage;
   framework: TestFramework;
@@ -7,6 +9,7 @@ export interface LanguageConfig {
   customSettings: Record<string, any>;
   namingConvention: NamingConvention;
   codeStyle: CodeStyle;
+  advancedConfig?: AdvancedTestConfig;
 }
 
 export interface NamingConvention {

@@ -23,18 +23,21 @@ export class JavaScriptPactGenerator extends LanguageGenerator {
     // Generate package.json
     files.push(this.generatePackageJsonFile(testSuite, config));
 
-    // Generate jest config if using Jest
+    // Generate jest config if using Jest (with advanced configuration)
     if (config.framework === 'jest') {
       files.push(this.generateJestConfigFile(config));
+      if (config.advancedConfig) {
+        files.push(this.generateJestSetupFile(config));
+      }
     }
 
     // Generate supporting files
     if (!testSuite.isProviderMode) {
-      files.push(this.generateApiClientFile());
+      files.push(this.generateApiClientFile(config));
     }
 
     // Generate .env example file
-    files.push(this.generateEnvFile(testSuite.isProviderMode));
+    files.push(this.generateEnvFile(testSuite.isProviderMode, config));
 
     // Generate README
     files.push(this.generateReadmeFile(testSuite, config));
@@ -252,12 +255,30 @@ ${providerStates.map(state => `        '${state}': async () => {
   }
 
   private generateJestConfigFile(config: LanguageConfig): GeneratedFile {
+    const advancedConfig = config.advancedConfig;
+    
     const jestConfig = {
       testEnvironment: 'node',
       testMatch: ['**/tests/**/*.test.js'],
       collectCoverageFrom: ['src/**/*.js'],
       coverageDirectory: 'coverage',
-      verbose: true
+      verbose: advancedConfig?.execution?.verbose ?? true,
+      ...(advancedConfig?.timeouts && {
+        testTimeout: advancedConfig.timeouts.test,
+        timeout: advancedConfig.timeouts.suite
+      }),
+      ...(advancedConfig?.execution?.maxConcurrency && {
+        maxWorkers: advancedConfig.execution.parallel ? advancedConfig.execution.maxConcurrency : 1
+      }),
+      ...(advancedConfig?.execution?.randomOrder && {
+        randomize: true
+      }),
+      ...(advancedConfig?.execution?.stopOnFirstFailure && {
+        bail: 1
+      }),
+      ...(config.advancedConfig && {
+        setupFilesAfterEnv: ['<rootDir>/jest.setup.js']
+      })
     };
 
     return {
@@ -265,7 +286,97 @@ ${providerStates.map(state => `        '${state}': async () => {
       content: `module.exports = ${JSON.stringify(jestConfig, null, 2)};`,
       type: 'config',
       language: 'javascript',
-      description: 'Jest configuration'
+      description: 'Jest configuration with advanced settings'
+    };
+  }
+
+  private generateJestSetupFile(config: LanguageConfig): GeneratedFile {
+    const advancedConfig = config.advancedConfig;
+    
+    const setupContent = `// Jest setup file for Pact tests with advanced configuration
+const { execSync } = require('child_process');
+
+// Advanced configuration
+const config = ${JSON.stringify(advancedConfig || {}, null, 2)};
+
+// Global test setup
+beforeAll(() => {
+  ${advancedConfig?.logging?.enableConsole ? "console.log('Starting Pact tests...');" : "// Console logging disabled"}
+  ${advancedConfig?.environment?.loadFromSystem ? `
+  // Load environment variables
+  if (config.environment?.configFile) {
+    require('dotenv').config({ path: config.environment.configFile });
+  }
+  ` : ''}
+});
+
+afterAll(() => {
+  ${advancedConfig?.logging?.enableConsole ? "console.log('Pact tests completed');" : "// Console logging disabled"}
+});
+
+// Configure request timeouts
+if (config.timeouts?.request) {
+  jest.setTimeout(config.timeouts.request);
+}
+
+// Global error handler
+process.on('unhandledRejection', (reason, promise) => {
+  ${advancedConfig?.logging?.level === 'debug' || advancedConfig?.logging?.level === 'trace' ? 
+    "console.error('Unhandled Rejection at:', promise, 'reason:', reason);" : 
+    "// Error logging configured"
+  }
+});
+
+// Custom headers setup
+global.defaultHeaders = config.network?.defaultHeaders || {};
+
+// Retry configuration
+global.retryConfig = config.retry || { enabled: false };
+
+// Axios retry interceptor (if retry is enabled)
+if (global.retryConfig.enabled) {
+  const axios = require('axios');
+  
+  axios.interceptors.response.use(
+    response => response,
+    async error => {
+      const { config: axiosConfig } = error;
+      
+      if (!axiosConfig || !axiosConfig.retry) {
+        axiosConfig.retry = { count: 0 };
+      }
+      
+      const shouldRetry = 
+        axiosConfig.retry.count < global.retryConfig.maxAttempts &&
+        (global.retryConfig.retryOnStatus.includes(error.response?.status) ||
+         (global.retryConfig.retryOnTimeout && error.code === 'ECONNABORTED'));
+      
+      if (shouldRetry) {
+        axiosConfig.retry.count++;
+        
+        // Calculate delay based on backoff strategy
+        let delay = global.retryConfig.baseDelay;
+        if (global.retryConfig.backoffStrategy === 'exponential') {
+          delay *= Math.pow(2, axiosConfig.retry.count - 1);
+        } else if (global.retryConfig.backoffStrategy === 'linear') {
+          delay *= axiosConfig.retry.count;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return axios(axiosConfig);
+      }
+      
+      return Promise.reject(error);
+    }
+  );
+}`;
+
+    return {
+      path: 'jest.setup.js',
+      content: setupContent,
+      type: 'config',
+      language: 'javascript',
+      description: 'Jest setup file with advanced test configuration'
     };
   }
 
@@ -594,7 +705,9 @@ ${providerStates.map(state => `        '${state}': async () => {
     return routeCode;
   }
 
-  private generateApiClientFile(): GeneratedFile {
+  private generateApiClientFile(config?: LanguageConfig): GeneratedFile {
+    const advancedConfig = config?.advancedConfig;
+    
     const content = `const axios = require('axios');
 
 class ApiClient {
@@ -603,8 +716,12 @@ class ApiClient {
       baseURL,
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+        'Accept': 'application/json',
+        ...${JSON.stringify(advancedConfig?.network?.defaultHeaders || {})}
+      },
+      ${advancedConfig?.timeouts ? `timeout: ${advancedConfig.timeouts.request},` : ''}
+      ${advancedConfig?.network?.maxConnections ? `maxConcurrency: ${advancedConfig.network.maxConnections},` : ''}
+      ${advancedConfig?.network?.keepAlive ? `keepAlive: true,` : ''}
     });
   }
 
@@ -640,11 +757,14 @@ module.exports = { ApiClient };`;
     };
   }
 
-  private generateEnvFile(isProviderMode: boolean): GeneratedFile {
-    const content = isProviderMode 
+  private generateEnvFile(isProviderMode: boolean, config?: LanguageConfig): GeneratedFile {
+    const advancedConfig = config?.advancedConfig;
+    const envVars = advancedConfig?.environment?.variables || {};
+    
+    let baseContent = isProviderMode 
       ? `# Provider configuration
-PORT=3000
-PROVIDER_BASE_URL=http://localhost:3000
+PORT=${advancedConfig?.network?.customPort || 3000}
+PROVIDER_BASE_URL=${advancedConfig?.network?.baseUrl || 'http://localhost:3000'}
 
 # Pact Broker configuration (optional)
 PACT_BROKER_BASE_URL=
@@ -655,10 +775,20 @@ PACT_BROKER_PASSWORD=
 CI=false
 GIT_COMMIT=1.0.0`
       : `# Consumer configuration
-API_BASE_URL=http://localhost:3000
+API_BASE_URL=${advancedConfig?.network?.baseUrl || 'http://localhost:3000'}
 
 # Test configuration
-TEST_TIMEOUT=5000`;
+TEST_TIMEOUT=${advancedConfig?.timeouts?.test || 5000}`;
+
+    // Add custom environment variables
+    if (Object.keys(envVars).length > 0) {
+      baseContent += '\n\n# Custom environment variables\n';
+      Object.entries(envVars).forEach(([key, value]) => {
+        baseContent += `${key}=${value}\n`;
+      });
+    }
+
+    const content = baseContent;
 
     return {
       path: '.env.example',

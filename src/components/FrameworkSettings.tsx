@@ -7,6 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { FrameworkConfig, SupportedFramework, DatabaseType, AuthType, CiCdType } from '../types/frameworkTypes';
+import { AdvancedTestSettings } from './AdvancedTestSettings';
+import { DEFAULT_ADVANCED_CONFIG } from '../types/testConfigTypes';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 interface FrameworkSettingsProps {
   config: FrameworkConfig;
@@ -14,6 +18,8 @@ interface FrameworkSettingsProps {
 }
 
 export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, onChange }) => {
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
+
   const updateConfig = (updates: Partial<FrameworkConfig>) => {
     onChange({ ...config, ...updates });
   };
@@ -314,6 +320,33 @@ export const FrameworkSettings: React.FC<FrameworkSettingsProps> = ({ config, on
             </div>
           </div>
         </CardContent>
+      </Card>
+
+      {/* Advanced Test Configuration */}
+      <Card>
+        <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-accent/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle>Advanced Test Configuration</CardTitle>
+                  {showAdvanced ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </div>
+              </div>
+              <CardDescription>
+                Configure timeouts, logging, retry behavior, and execution settings
+              </CardDescription>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              <AdvancedTestSettings
+                config={config.advancedConfig || DEFAULT_ADVANCED_CONFIG}
+                onChange={(advancedConfig) => updateConfig({ advancedConfig })}
+              />
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
       </Card>
     </div>
   );

@@ -1,3 +1,5 @@
+import { AdvancedTestConfig } from './testConfigTypes';
+
 export type SupportedFramework = 
   | 'express' | 'fastify' | 'nestjs'        // JavaScript/TypeScript
   | 'spring-boot'                           // Java
@@ -33,6 +35,7 @@ export interface FrameworkConfig {
   version: string;
   author: string;
   features: FrameworkFeatures;
+  advancedConfig?: AdvancedTestConfig;
 }
 
 export interface GeneratedFile {
